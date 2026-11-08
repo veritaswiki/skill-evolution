@@ -1,0 +1,25 @@
+# Skill Evolution (skill-evolution)
+#
+# Closed learning loop:
+#   Turn end -> bounded snapshot -> read-only review -> Chinese briefing & directive gate -> SHA-256 ledger
+- insert:
+    - id: skill-evolution
+      name: 'skill-evolution'
+      config:
+        enabled: true
+        mode: draft
+        skillsRoot: ''
+        minTurnsBetween: 3
+        minMinutesBetween: 5
+        maxMessages: 24
+        maxChars: 24000
+        reviewTimeoutSeconds: 180
+        reviewModel:
+          provider: ''
+          model: ''
+          reasoningEffort: ''
+        curatorEnabled: true
+        consolidate: false
+        consolidateDryRun: true
+        staleAfterDays: 14
+        archiveAfterDays: 30

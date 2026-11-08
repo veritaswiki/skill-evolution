@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.log
+*.tgz
+.staging/
+.archive/
+.evolution_backups/
+.evolution_ledger.jsonl*
+.usage.json
+.throttle.json
+.last_review.json

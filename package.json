@@ -1,0 +1,74 @@
+{
+  "name": "skill-evolution",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Closed-loop skill self-evolution engine: post-turn review, Chinese briefing & mandatory directive fusion, 4-gate safety validation, SHA-256 content-addressed ledger with single-entry rollback, LLM umbrella consolidation, and full Web/Mobile/Remote workbench.",
+  "license": "MIT",
+  "author": {
+    "name": "veritaswiki",
+    "url": "https://github.com/veritaswiki"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/veritaswiki/skill-evolution.git"
+  },
+  "homepage": "https://github.com/veritaswiki/skill-evolution#readme",
+  "bugs": {
+    "url": "https://github.com/veritaswiki/skill-evolution/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "plugin",
+    "skill",
+    "self-evolution",
+    "hermes",
+    "curator",
+    "procedural-memory",
+    "ui"
+  ],
+  "icon": "./icon.svg",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "audit:parity": "node tools/verify-parity.mjs",
+    "audit:prompts": "node tools/verify-prompt-fidelity.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.0.0"
+  }
+}

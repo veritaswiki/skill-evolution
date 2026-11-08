@@ -67,8 +67,5 @@
         "@deepseek-ai/dsh-client-ui-settings"
       ]
     }
-  },
-  "peerDependencies": {
-    "@deepseek-ai/schemastery": ">=3.0.0"
   }
 }

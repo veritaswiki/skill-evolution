@@ -28,6 +28,19 @@ jobs:
           node tools/verify-parity.mjs
           node tools/verify-prompt-fidelity.mjs
 
+      - name: Pack version-free release tarball (skill-evolution.tgz)
+        run: |
+          npm pack
+          mv skill-evolution-*.tgz skill-evolution.tgz
+
+      - name: Upload skill-evolution.tgz to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release upload "$TAG" skill-evolution.tgz --clobber
+
       - name: Publish to npm (when NPM_TOKEN is configured)
         if: env.NODE_AUTH_TOKEN != ''
         env:

@@ -180,23 +180,215 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** 中文简报与强制批示组件（含 AI 批示融合进化闭环） */
+    /**
+     * 🌌 自进化星系拓扑图 (Skill Constellation & Umbrella Cluster Graph)
+     * 借鉴 Obsidian Graph / LangGraph Studio / Hermes Journey：
+     * 中心为自进化引擎核心，内环为正式技能（绿色实心节点），外环为待审草稿（琥珀脉冲节点），
+     * 同前缀/同领域的节点自动绘制聚类引力连线，点击任意节点直接跳转审阅或查看。
+     */
+    function SkillConstellationGraph({ skills = [], drafts = [], onSelectDraft, onSelectSkillsTab }) {
+      const W = 680;
+      const H = 250;
+      const cx = 210;
+      const cy = 125;
+
+      const nodes = [];
+      skills.forEach((s, i) => {
+        const angle = (i / Math.max(1, skills.length)) * Math.PI * 2 - Math.PI / 2;
+        const r = 64;
+        nodes.push({
+          id: s.name,
+          kind: 'skill',
+          x: cx + Math.cos(angle) * r,
+          y: cy + Math.sin(angle) * r,
+          prefix: s.name.split('-')[0],
+          label: s.name,
+          sub: `正式 · 用 ${s.useCount || 0} 次`,
+        });
+      });
+
+      drafts.forEach((d, i) => {
+        const angle = (i / Math.max(1, drafts.length)) * Math.PI * 2 - Math.PI / 4;
+        const r = 104;
+        nodes.push({
+          id: d.name,
+          kind: 'draft',
+          isPatch: d.isPatch,
+          x: cx + Math.cos(angle) * r,
+          y: cy + Math.sin(angle) * r,
+          prefix: d.name.split('-')[0],
+          label: d.name,
+          titleZh: d.briefing?.titleZh || d.name,
+          sub: d.isPatch ? '待审升级补丁' : '待审新技能',
+        });
+      });
+
+      // 计算同前缀或同名补丁之间的聚类引力连线
+      const clusterLinks = [];
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          if (
+            nodes[i].id === nodes[j].id ||
+            nodes[i].prefix === nodes[j].prefix ||
+            (nodes[i].id.includes('migration') && nodes[j].id.includes('migration'))
+          ) {
+            clusterLinks.push([nodes[i], nodes[j]]);
+          }
+        }
+      }
+
+      return h(
+        'div',
+        { className: 'ev-galaxy-card' },
+        h(
+          'div',
+          { className: 'ev-galaxy-svg-wrap' },
+          h(
+            'svg',
+            { viewBox: `0 0 ${W} ${H}`, className: 'ev-galaxy-svg' },
+            // 轨道环
+            h('circle', { cx, cy, r: 64, className: 'ev-orbit-ring' }),
+            h('circle', { cx, cy, r: 104, className: 'ev-orbit-ring ev-orbit-ring-outer' }),
+            // 中心到各节点的辐射连线
+            nodes.map((n, idx) =>
+              h('line', {
+                key: 'r-' + idx,
+                x1: cx,
+                y1: cy,
+                x2: n.x,
+                y2: n.y,
+                className: n.kind === 'draft' ? 'ev-ray-draft' : 'ev-ray-skill',
+              }),
+            ),
+            // 聚类建伞引力连线
+            clusterLinks.map(([a, b], idx) =>
+              h('line', {
+                key: 'c-' + idx,
+                x1: a.x,
+                y1: a.y,
+                x2: b.x,
+                y2: b.y,
+                className: 'ev-cluster-link',
+              }),
+            ),
+            // 中心引擎核心
+            h(
+              'g',
+              { transform: `translate(${cx},${cy})` },
+              h('circle', { r: 22, className: 'ev-core-node' }),
+              h('text', { textAnchor: 'middle', dy: '4', className: 'ev-core-text' }, '🧬 CORE'),
+            ),
+            // 技能与草稿星球节点
+            nodes.map((n, idx) =>
+              h(
+                'g',
+                {
+                  key: n.kind + ':' + n.id + ':' + idx,
+                  transform: `translate(${n.x},${n.y})`,
+                  className: 'ev-planet-group',
+                  onClick: () => (n.kind === 'draft' ? onSelectDraft(n.id) : onSelectSkillsTab()),
+                },
+                n.kind === 'draft' ? h('circle', { r: 15, className: 'ev-planet-pulse' }) : null,
+                h('circle', {
+                  r: n.kind === 'draft' ? 9 : 10,
+                  className: n.kind === 'draft' ? 'ev-planet-draft' : 'ev-planet-skill',
+                }),
+                h(
+                  'text',
+                  {
+                    x: n.x >= cx ? 14 : -14,
+                    y: 4,
+                    textAnchor: n.x >= cx ? 'start' : 'end',
+                    className: 'ev-planet-label',
+                  },
+                  n.label.length > 22 ? n.label.slice(0, 20) + '…' : n.label,
+                ),
+              ),
+            ),
+            // 右侧图例与聚类雷达说明
+            h(
+              'g',
+              { transform: 'translate(430, 28)' },
+              h('rect', { width: 230, height: 194, rx: 12, className: 'ev-galaxy-legend-box' }),
+              h('text', { x: 16, y: 28, className: 'ev-legend-title' }, '🌌 技能星系与建伞雷达'),
+              h('circle', { cx: 24, cy: 54, r: 6, className: 'ev-planet-skill' }),
+              h('text', { x: 38, y: 58, className: 'ev-legend-item' }, `内轨：正式生效技能 (${skills.length})`),
+              h('circle', { cx: 24, cy: 82, r: 6, className: 'ev-planet-draft' }),
+              h('text', { x: 38, y: 86, className: 'ev-legend-item' }, `外轨：待审阅草稿 (${drafts.length})`),
+              h('line', { x1: 16, y1: 110, x2: 32, y2: 110, className: 'ev-cluster-link' }),
+              h('text', { x: 38, y: 114, className: 'ev-legend-item' }, `虚线：同域建伞聚类 (${clusterLinks.length} 组)`),
+              h('text', { x: 16, y: 146, className: 'ev-legend-hint' }, '💡 点击图上任意琥珀色草稿星球，'),
+              h('text', { x: 16, y: 166, className: 'ev-legend-hint' }, '可直接进入可视化推演与批示画布。'),
+            ),
+          ),
+        ),
+      );
+    }
+
+    /**
+     * 🧬 交互式可视化进化推演画布 (Visual Blueprint & Decision Simulation Canvas)
+     * 借鉴 React Flow / ComfyUI 节点蓝图 + GitHub PR 行级批注 + Linear 状态推演沙盘：
+     * 1) 顶部展示 [🎯 触发器] ──▶ [💡 核心定位]
+     * 2) 中部展示 [⚡ 可视化步骤节点流程图 Step 1 → Step 2 → Step 3]，每个节点支持点击 [+ 插入想法]
+     * 3) 下方展示 [🔀 三路交互式决策后果推演沙盘：🟢 同意入库 | 🟣 插入想法调整 | 🔴 不同意驳回]
+     */
     function ReviewBrief({ draft, onSwitchPreview, onRefine, onApprove, onReject, busyKey }) {
-      const [comment, setComment] = useState('');
+      const [decisionMode, setDecisionMode] = useState('approve'); // 'approve' | 'adjust' | 'reject'
+      const [selectedStepIdx, setSelectedStepIdx] = useState(null);
+      const [selectedBlocks, setSelectedBlocks] = useState([]);
+      const [customIdea, setCustomIdea] = useState('');
+
       const isBusy = busyKey === `draft:${draft.name}`;
       const b = draft.briefing || {};
-      const keyRules = Array.isArray(b.keyRules) ? b.keyRules : [];
-      const quickDirectives = [
-        '同意采纳：请将技能正文全部转化为清晰易读的中文规范后正式入库',
-        '同意采纳：提炼的排查顺序与防坑规则准确，直接按此入库',
-        '同意但需补充：请在步骤开头加入“修改前必须先备份原文件/配置”的硬性要求',
-        '不同意驳回：这属于单次特定环境偶发问题，不应固化为全局技能',
+      const steps =
+        Array.isArray(b.stepsZh) && b.stepsZh.length
+          ? b.stepsZh
+          : Array.isArray(b.keyRules) && b.keyRules.length
+            ? b.keyRules
+            : ['按标准顺序执行诊断与排查', '验证真实运行结果后再收尾'];
+      const pitfalls = Array.isArray(b.pitfallsZh) ? b.pitfallsZh : [];
+
+      const IDEA_BLOCKS = [
+        { id: 'backup', label: '🛡️ 执行修改前必须先备份原文件/配置', text: '在步骤开头增加硬性要求：修改任何文件或配置前必须先创建备份' },
+        { id: 'readonly', label: '🔍 先跑只读诊断确认根因再动手', text: '强调必须先通过只读命令确认根因证据，严禁盲目猜测修改' },
+        { id: 'concise', label: '⚡ 精简步骤，只保留最核心可执行命令', text: '精简冗余描述，只保留最核心、可复制执行的命令与判断条件' },
+        { id: 'verify', label: '✅ 结尾增加端到端实测与回滚校验', text: '在最后一步增加端到端真实探针验证与失败自动回滚要求' },
       ];
+
+      const REJECT_BLOCKS = [
+        '属于单次偶发环境问题，不应固化为长期技能',
+        '与现有技能重复，无需单独新建',
+        '当前提炼的步骤不够准确，直接废弃',
+      ];
+
+      const toggleBlock = (blk) => {
+        setDecisionMode('adjust');
+        setSelectedBlocks((prev) =>
+          prev.includes(blk.text) ? prev.filter((x) => x !== blk.text) : [...prev, blk.text],
+        );
+      };
+
+      const handlePickStep = (idx, stepText) => {
+        setDecisionMode('adjust');
+        setSelectedStepIdx(idx);
+        const prefix = `【针对步骤 ${idx + 1}（${stepText.slice(0, 18)}…）插入想法】：`;
+        if (!customIdea.includes(prefix)) {
+          setCustomIdea((prev) => (prev ? prev + '\n' + prefix : prefix));
+        }
+      };
+
+      // 合成最终发送给后端的批示文本
+      const composedDirective = [
+        ...selectedBlocks,
+        customIdea.trim(),
+      ]
+        .filter(Boolean)
+        .join('；');
 
       return h(
         'div',
         { className: 'ev-brief-wrap' },
-        // 顶部标题与视图切换
+        // 顶部标题与源码视图切换
         h(
           'div',
           { className: 'ev-card-head' },
@@ -206,12 +398,12 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'ev-row-title' },
-              h(Chip, { tone: 'brand', icon: 'spark' }, '中文审阅简报'),
+              h(Chip, { tone: 'brand', icon: 'spark' }, '🧬 可视化进化推演画布'),
               h('code', { className: 'ev-skill-name' }, draft.name),
               h(
                 Chip,
                 { tone: draft.isPatch ? 'ok' : 'warn' },
-                draft.isPatch ? '现有技能升级补丁' : '新蒸馏类级技能',
+                draft.isPatch ? '🔄 升级现有技能' : '✨ 新增类级技能',
               ),
             ),
             h('h3', { className: 'ev-brief-title' }, b.titleZh || draft.name),
@@ -223,137 +415,291 @@ window.__ModuleLoader__.load({
               'button',
               { className: 'ev-btn ev-btn-ghost', onClick: onSwitchPreview },
               h(Icon, { d: ICONS.file, size: 13 }),
-              '查看 SKILL.md 源码全文',
+              '查看底层 SKILL.md 源码',
             ),
           ),
         ),
 
-        // 1. 这是什么东西
+        // 第一层：[🎯 触发器] ──▶ [💡 核心定位] 可视化双节点顶栏
         h(
           'div',
-          { className: 'ev-brief-section' },
-          h('div', { className: 'ev-brief-label' }, '💡 这是个什么东西（AI 蒸馏摘要）'),
-          h('div', { className: 'ev-brief-text' }, b.whatItIs || draft.description || '(无摘要)'),
-          keyRules.length
+          { className: 'ev-trigger-banner' },
+          h(
+            'div',
+            { className: 'ev-trigger-node' },
+            h('div', { className: 'ev-node-tag ev-node-tag-brand' }, '🎯 什么时候自动触发 (Trigger)'),
+            h('div', { className: 'ev-node-body' }, b.triggerZh || `当遇到与「${draft.name}」相关的同类任务时自动唤醒`),
+          ),
+          h('div', { className: 'ev-flow-arrow' }, '──▶'),
+          h(
+            'div',
+            { className: 'ev-trigger-node' },
+            h('div', { className: 'ev-node-tag ev-node-tag-ok' }, '💡 它代表什么核心经验 (Essence)'),
+            h('div', { className: 'ev-node-body' }, b.whatItIs || draft.description || '(无摘要)'),
+          ),
+        ),
+
+        // 第二层：⚡ 可视化步骤节点流程图（支持点击任意节点插入想法）
+        h(
+          'div',
+          { className: 'ev-blueprint-box' },
+          h(
+            'div',
+            { className: 'ev-blueprint-head' },
+            h('span', { className: 'ev-brief-label' }, '⚡ 技能执行节点蓝图（点击任意步骤的「+ 插入想法」可定点微调）'),
+            h('span', { className: 'ev-field-hint' }, `共 ${steps.length} 个执行节点 · ${pitfalls.length} 道避坑护栏`),
+          ),
+          h(
+            'div',
+            { className: 'ev-step-chain' },
+            steps.map((st, idx) =>
+              h(
+                React.Fragment,
+                { key: idx },
+                h(
+                  'div',
+                  {
+                    className: 'ev-step-node' + (selectedStepIdx === idx ? ' ev-step-node-selected' : ''),
+                  },
+                  h(
+                    'div',
+                    { className: 'ev-step-node-top' },
+                    h('span', { className: 'ev-step-badge' }, `STEP ${idx + 1}`),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ev-step-inject-btn',
+                        onClick: () => handlePickStep(idx, st),
+                      },
+                      '+ 在此步插入想法',
+                    ),
+                  ),
+                  h('div', { className: 'ev-step-node-text' }, String(st).replace(/^\d+\.\s*/, '')),
+                ),
+                idx < steps.length - 1 ? h('div', { className: 'ev-step-connector' }, '↓') : null,
+              ),
+            ),
+          ),
+          pitfalls.length
             ? h(
-                'ul',
-                { className: 'ev-brief-rules' },
-                keyRules.map((rule, idx) => h('li', { key: idx }, rule)),
+                'div',
+                { className: 'ev-pitfall-wall' },
+                pitfalls.map((p, idx) =>
+                  h(
+                    'div',
+                    { key: idx, className: 'ev-pitfall-shield' },
+                    h('span', { className: 'ev-pitfall-icon' }, '🛡️ 避坑护栏'),
+                    h('span', null, p),
+                  ),
+                ),
               )
             : null,
         ),
 
-        // 2. 同意 vs 不同意的影响对比
-        h(
-          'div',
-          { className: 'ev-impact-grid' },
-          h(
-            'div',
-            { className: 'ev-impact-box ev-impact-approve' },
-            h('div', { className: 'ev-impact-head' }, '✅ 如果您同意采纳会如何？'),
-            h(
-              'div',
-              { className: 'ev-impact-body' },
-              b.ifApprove ||
-                'AI 会先根据您的批示修订并完善该技能，然后写入正式技能库（~/.dsh/skills/），后续遇到同类任务自动加载生效。',
-            ),
-          ),
-          h(
-            'div',
-            { className: 'ev-impact-box ev-impact-reject' },
-            h('div', { className: 'ev-impact-head' }, '🚫 如果您不同意驳回会如何？'),
-            h(
-              'div',
-              { className: 'ev-impact-body' },
-              b.ifReject ||
-                '该草稿将从暂存区销毁，不会改动现有正式技能库，同时将您的驳回批示记入账本防止重复生成。',
-            ),
-          ),
-        ),
-
-        // 3. 如果已经执行过 AI 批示融合，展示 AI 的分析汇报
+        // 若刚刚执行过 AI 融合微调，高亮展示 AI 调整汇报
         b.aiAnalysis
           ? h(
               'div',
               { className: 'ev-ai-analysis' },
-              h('div', { className: 'ev-brief-label' }, '🤖 AI 对您上次批示的进化分析与修订汇报'),
-              b.lastUserComment
-                ? h('div', { className: 'ev-field-hint' }, `您的批示：「${b.lastUserComment}」`)
-                : null,
-              h('div', { className: 'ev-brief-text', style: { marginTop: '4px' } }, b.aiAnalysis),
+              h('div', { className: 'ev-brief-label' }, '🤖 AI 已将您的想法融入上述蓝图：'),
+              h('div', { className: 'ev-brief-text' }, b.aiAnalysis),
             )
           : null,
 
-        // 4. 强制批示输入区
+        // 第三层：🔀 三路可视化决策后果推演沙盘（点击切换路径，所见即所得）
         h(
           'div',
-          { className: 'ev-directive-box' },
+          { className: 'ev-sandbox-box' },
+          h('div', { className: 'ev-brief-label' }, '🔀 交互式决策推演沙盘（点击下方任一路径，实时预览系统变化并执行）：'),
           h(
             'div',
-            { className: 'ev-directive-head' },
-            h('label', { className: 'ev-field-label' }, '✍️ 您的审阅批示 / 想法（必填，填写后解锁下方操作）：'),
-            h('span', { className: 'ev-field-hint' }, '写下您的补充想法，AI 会先分析融合您的批示再完成本次自进化'),
-          ),
-          h(
-            'div',
-            { className: 'ev-quick-directives' },
-            quickDirectives.map((q) =>
+            { className: 'ev-decision-Selector' },
+            [
+              {
+                id: 'approve',
+                tone: 'ok',
+                title: '🟢 路径 A：直接同意入库',
+                sub: '认可当前节点蓝图，立即升入正式技能库',
+              },
+              {
+                id: 'adjust',
+                tone: 'brand',
+                title: '🟣 路径 B：插入我的想法微调',
+                sub: '勾选积木或手写想法，让 AI 按您的意思改好再过',
+              },
+              {
+                id: 'reject',
+                tone: 'err',
+                title: '🔴 路径 C：不同意并驳回',
+                sub: '销毁该暂存草稿，正式技能库保持 0 改动',
+              },
+            ].map((item) =>
               h(
-                'button',
+                'div',
                 {
-                  key: q,
-                  type: 'button',
-                  className: 'ev-chip ev-chip-click',
-                  onClick: () => setComment(q),
+                  key: item.id,
+                  className:
+                    `ev-decision-card ev-decision-${item.tone}` +
+                    (decisionMode === item.id ? ' ev-decision-card-active' : ''),
+                  onClick: () => setDecisionMode(item.id),
                 },
-                '+ ' + q.slice(0, 26) + '…',
+                h('div', { className: 'ev-decision-title' }, item.title),
+                h('div', { className: 'ev-decision-sub' }, item.sub),
               ),
             ),
           ),
-          h('textarea', {
-            className: 'ev-input ev-textarea',
-            placeholder:
-              '在此输入您的批示（例如：同意，但把正文改成全中文，并加上一条先备份再修改的规则 / 不同意，理由是…）',
-            rows: 3,
-            value: comment,
-            onChange: (e) => setComment(e.target.value),
-          }),
-          h(
-            'div',
-            { className: 'ev-card-actions', style: { marginTop: '10px', justifyContent: 'flex-end' } },
-            h(
-              'button',
-              {
-                className: 'ev-btn ev-btn-ghost',
-                disabled: isBusy || !comment.trim(),
-                onClick: () => onRefine(draft.name, comment),
-                title: '让 AI 先根据您的批示重写草稿并生成中文分析，不立即入库，方便您先看效果',
-              },
-              h(Icon, { d: ICONS.spark, size: 14 }),
-              isBusy ? 'AI 正在分析批示…' : '1. AI 按批示修订草稿（先看效果）',
-            ),
-            h(
-              'button',
-              {
-                className: 'ev-btn ev-btn-primary',
-                disabled: isBusy || !comment.trim(),
-                onClick: () => onApprove(draft.name, comment),
-                title: 'AI 结合您的批示完成最终修订并立即升入正式技能库',
-              },
-              h(Icon, { d: ICONS.check, size: 14 }),
-              isBusy ? '正在进化入库…' : '2. 按批示进化并采纳进正式库',
-            ),
-            h(
-              'button',
-              {
-                className: 'ev-btn ev-btn-danger',
-                disabled: isBusy || !comment.trim(),
-                onClick: () => onReject(draft.name, comment),
-              },
-              h(Icon, { d: ICONS.x, size: 14 }),
-              '按批示驳回 (Discard)',
-            ),
-          ),
+
+          // 动态可视化推演流程图（随选中的路径 A / B / C 实时变化）
+          decisionMode === 'approve'
+            ? h(
+                'div',
+                { className: 'ev-sim-stage ev-sim-stage-ok' },
+                h(
+                  'div',
+                  { className: 'ev-sim-flow' },
+                  h('div', { className: 'ev-sim-box' }, `📄 草稿 (${draft.name})`),
+                  h('span', { className: 'ev-sim-arrow' }, '──▶'),
+                  h('div', { className: 'ev-sim-box' }, '🧾 SHA-256 快照备份'),
+                  h('span', { className: 'ev-sim-arrow' }, '──▶'),
+                  h(
+                    'div',
+                    { className: 'ev-sim-box ev-sim-box-highlight-ok' },
+                    draft.isPatch ? `🔄 升级正式库技能` : `✨ 新增正式库技能`,
+                  ),
+                  h('span', { className: 'ev-sim-arrow' }, '──▶'),
+                  h('div', { className: 'ev-sim-box' }, '⚡ DSH 热更新即时生效 (100% 可回滚)'),
+                ),
+                h('div', { className: 'ev-sim-desc' }, '📌 生效后果：' + (b.ifApprove || '采纳后该技能立即进入正式库，后续遇到同类任务自动按此流程执行。')),
+                h(
+                  'div',
+                  { className: 'ev-sim-actions' },
+                  h(
+                    'button',
+                    {
+                      className: 'ev-btn ev-btn-primary',
+                      disabled: isBusy,
+                      onClick: () => onApprove(draft.name, composedDirective || '同意采纳：按当前蓝图直接入库', false),
+                    },
+                    h(Icon, { d: ICONS.check, size: 14 }),
+                    isBusy ? '正在入库…' : '✅ 确认同意并立即入库',
+                  ),
+                ),
+              )
+            : decisionMode === 'adjust'
+              ? h(
+                  'div',
+                  { className: 'ev-sim-stage ev-sim-stage-brand' },
+                  h(
+                    'div',
+                    { className: 'ev-sim-flow' },
+                    h('div', { className: 'ev-sim-box' }, `📄 原草稿`),
+                    h('span', { className: 'ev-sim-arrow' }, '+'),
+                    h(
+                      'div',
+                      { className: 'ev-sim-box ev-sim-box-highlight-brand' },
+                      `🧩 您的想法 (${selectedBlocks.length + (customIdea.trim() ? 1 : 0)} 项)`,
+                    ),
+                    h('span', { className: 'ev-sim-arrow' }, '──▶'),
+                    h('div', { className: 'ev-sim-box' }, '🤖 AI 重新编排步骤与简报'),
+                    h('span', { className: 'ev-sim-arrow' }, '──▶'),
+                    h('div', { className: 'ev-sim-box' }, '✨ 预览新蓝图或直接入库'),
+                  ),
+                  h('div', { className: 'ev-field-label', style: { marginTop: '6px' } }, '🧩 第一步：点选要插入的想法积木（可多选，也可在上方点击具体步骤定点插入）：'),
+                  h(
+                    'div',
+                    { className: 'ev-block-palette' },
+                    IDEA_BLOCKS.map((blk) => {
+                      const active = selectedBlocks.includes(blk.text);
+                      return h(
+                        'button',
+                        {
+                          key: blk.id,
+                          type: 'button',
+                          className: 'ev-idea-block' + (active ? ' ev-idea-block-on' : ''),
+                          onClick: () => toggleBlock(blk),
+                        },
+                        active ? '✓ ' + blk.label : '+ ' + blk.label,
+                      );
+                    }),
+                  ),
+                  h('div', { className: 'ev-field-label', style: { marginTop: '6px' } }, '✍️ 第二步：或者自由输入您的补充想法：'),
+                  h('textarea', {
+                    className: 'ev-input ev-textarea',
+                    placeholder: '输入您想插入或修改的任何细节（例如：把第 2 步改成先检查端口占用…）',
+                    rows: 2,
+                    value: customIdea,
+                    onChange: (e) => setCustomIdea(e.target.value),
+                  }),
+                  h(
+                    'div',
+                    { className: 'ev-sim-actions' },
+                    h(
+                      'button',
+                      {
+                        className: 'ev-btn ev-btn-ghost',
+                        disabled: isBusy || !composedDirective,
+                        onClick: () => onRefine(draft.name, composedDirective),
+                      },
+                      h(Icon, { d: ICONS.spark, size: 14 }),
+                      isBusy ? 'AI 正在融合您的想法…' : '🤖 1. 先让 AI 按想法调整蓝图（看预览效果）',
+                    ),
+                    h(
+                      'button',
+                      {
+                        className: 'ev-btn ev-btn-primary',
+                        disabled: isBusy || !composedDirective,
+                        onClick: () => onApprove(draft.name, composedDirective, true),
+                      },
+                      h(Icon, { d: ICONS.check, size: 14 }),
+                      isBusy ? '正在融合并入库…' : '✅ 2. 融合我的想法并直接入库',
+                    ),
+                  ),
+                )
+              : h(
+                  'div',
+                  { className: 'ev-sim-stage ev-sim-stage-err' },
+                  h(
+                    'div',
+                    { className: 'ev-sim-flow' },
+                    h('div', { className: 'ev-sim-box' }, `📄 草稿 (${draft.name})`),
+                    h('span', { className: 'ev-sim-arrow' }, '──▶'),
+                    h('div', { className: 'ev-sim-box ev-sim-box-highlight-err' }, '🗑️ 销毁暂存文件'),
+                    h('span', { className: 'ev-sim-arrow' }, '──▶'),
+                    h('div', { className: 'ev-sim-box' }, '🛡️ 正式技能库 0 改动 · 理由记入账本'),
+                  ),
+                  h('div', { className: 'ev-sim-desc' }, '📌 驳回后果：' + (b.ifReject || '销毁该草稿，不会影响现有任何技能。')),
+                  h(
+                    'div',
+                    { className: 'ev-block-palette' },
+                    REJECT_BLOCKS.map((reason) =>
+                      h(
+                        'button',
+                        {
+                          key: reason,
+                          type: 'button',
+                          className: 'ev-idea-block' + (customIdea === reason ? ' ev-idea-block-on' : ''),
+                          onClick: () => setCustomIdea(reason),
+                        },
+                        '驳回原因：' + reason,
+                      ),
+                    ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ev-sim-actions' },
+                    h(
+                      'button',
+                      {
+                        className: 'ev-btn ev-btn-danger',
+                        disabled: isBusy,
+                        onClick: () => onReject(draft.name, customIdea.trim() || '人工审阅驳回销毁'),
+                      },
+                      h(Icon, { d: ICONS.x, size: 14 }),
+                      isBusy ? '正在销毁…' : '🚫 确认驳回并销毁该草稿',
+                    ),
+                  ),
+                ),
         ),
       );
     }
@@ -490,7 +836,7 @@ window.__ModuleLoader__.load({
               busyKey,
               onSwitchPreview: () => setView('preview'),
               onRefine: (name, comment) => onRefine(name, comment),
-              onApprove: (name, comment) => onPromote(name, comment),
+              onApprove: (name, comment, evolveWithComment) => onPromote(name, comment, evolveWithComment),
               onReject: (name, comment) => onDiscard(name, comment),
             })
           : h(
@@ -792,7 +1138,7 @@ window.__ModuleLoader__.load({
           ),
           h(
             SettingField,
-            { label: '复盘专用模型（可选）', hint: '留空默认使用快速辅助模型，避免消耗主模型高阶配额' },
+            { label: '复盘专用模型（可选）', hint: '留空默认用快速辅助模型 seoul/auto/deepseek-v4.1-flash，避免消耗终裁配额' },
             h('input', {
               type: 'text',
               className: 'ev-input',
@@ -1151,6 +1497,22 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'ev-section-head' },
+              h('h2', { className: 'ev-section-title' }, '🌌 自进化星系与聚类拓扑图 (Skill Constellation)'),
+              h('span', { className: 'ev-field-hint' }, '内轨为已生效正式技能，外轨脉冲星为待审草稿，虚线代表可合并为同一大伞的技能聚类'),
+            ),
+            h(SkillConstellationGraph, {
+              skills: data.skills || [],
+              drafts: data.drafts || [],
+              onSelectDraft: () => setTab('drafts'),
+              onSelectSkillsTab: () => setTab('skills'),
+            }),
+          ),
+          h(
+            'section',
+            { className: 'ev-section' },
+            h(
+              'div',
+              { className: 'ev-section-head' },
               h('h2', { className: 'ev-section-title' }, '6 步闭环实时状态条 (Closed Learning Loop)'),
               h(
                 'div',
@@ -1278,17 +1640,17 @@ window.__ModuleLoader__.load({
                         () => api('/refine-draft', { method: 'POST', body: JSON.stringify({ name, comment }) }),
                         (r) => `AI 已按您的批示修订草稿：${r?.aiAnalysis || name}`,
                       ),
-                    onPromote: (name, comment) =>
+                    onPromote: (name, comment, evolveWithComment = false) =>
                       act(
                         `draft:${name}`,
                         () =>
                           api('/promote', {
                             method: 'POST',
-                            body: JSON.stringify({ name, comment, evolveWithComment: true }),
+                            body: JSON.stringify({ name, comment, evolveWithComment: Boolean(evolveWithComment) }),
                           }),
                         (r) =>
                           r?.aiAnalysis
-                            ? `已按批示进化并采纳「${name}」：${r.aiAnalysis}`
+                            ? `已融合您的想法并采纳「${name}」：${r.aiAnalysis}`
                             : `已采纳「${name}」并热更新至 DSH 技能目录`,
                       ),
                     onDiscard: (name, comment) =>
@@ -1703,192 +2065,318 @@ window.__ModuleLoader__.load({
       );
     }
 
-    // ---------- 6. 样式表（自适应明暗主题 Token + 行号高亮 + Diff 表格）----------
+    // ---------- 6. 样式表（明暗双主题高对比度自适应 + 选中态清晰反转 + 移动端适配）----------
     const CSS = `
-.ev-brief-wrap{display:flex;flex-direction:column;gap:12px}
-.ev-brief-title{margin:6px 0 0;font-size:15.5px;font-weight:680;color:var(--dsw-alias-label-primary,#f4f4f5)}
-.ev-brief-section{padding:11px 14px;border-radius:10px;
-  background:color-mix(in srgb,#8b7cf6 8%,var(--dsw-alias-bg-layer-2,#27272a));
-  border:1px solid color-mix(in srgb,#8b7cf6 30%,transparent)}
-.ev-brief-label{font-size:12px;font-weight:650;color:#ddd6fe;margin-bottom:4px}
-.ev-brief-text{font-size:12.5px;line-height:1.65;color:var(--dsw-alias-label-primary,#e4e4e7)}
-.ev-brief-rules{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px;
-  font-size:12px;color:var(--dsw-alias-label-secondary,#d4d4d8)}
-.ev-impact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
-.ev-impact-box{padding:10px 13px;border-radius:10px;display:flex;flex-direction:column;gap:4px}
-.ev-impact-approve{background:color-mix(in srgb,#34d399 10%,transparent);
-  border:1px solid color-mix(in srgb,#34d399 35%,transparent)}
-.ev-impact-reject{background:color-mix(in srgb,#f87171 10%,transparent);
-  border:1px solid color-mix(in srgb,#f87171 35%,transparent)}
-.ev-impact-head{font-size:12px;font-weight:650}
-.ev-impact-approve .ev-impact-head{color:#6ee7b7}
-.ev-impact-reject .ev-impact-head{color:#fca5a5}
-.ev-impact-body{font-size:11.5px;line-height:1.55;color:var(--dsw-alias-label-secondary,#d4d4d8)}
-.ev-ai-analysis{padding:11px 14px;border-radius:10px;
-  background:color-mix(in srgb,#34d399 12%,var(--dsw-alias-bg-layer-2,#27272a));
-  border:1px solid color-mix(in srgb,#34d399 42%,transparent)}
-.ev-directive-box{padding:12px 14px;border-radius:10px;display:flex;flex-direction:column;gap:8px;
-  background:var(--dsw-alias-bg-layer-2,#27272a);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 75%,transparent)}
-.ev-directive-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.ev-quick-directives{display:flex;gap:6px;flex-wrap:wrap}
-.ev-textarea{resize:vertical;min-height:68px;line-height:1.55}
 .ev-scroll-shell{
   height:100%; width:100%; overflow-y:auto; overflow-x:hidden; box-sizing:border-box;
+  background:var(--dsw-alias-bg-base,transparent);
 }
 .ev-root{
-  --ev-brand:#8b7cf6; --ev-brand-soft:color-mix(in srgb,#8b7cf6 16%,transparent);
-  --ev-ok:#34d399; --ev-warn:#fbbf24; --ev-err:#f87171;
-  color:var(--dsw-alias-label-primary,#e4e4e7);
+  --ev-brand:var(--dsw-alias-brand-primary,#6d28d9);
+  --ev-brand-fg:#5b21b6;
+  --ev-brand-soft:color-mix(in srgb,#6d28d9 11%,transparent);
+  --ev-brand-border:color-mix(in srgb,#6d28d9 32%,transparent);
+  --ev-ok:#059669;
+  --ev-ok-fg:#065f46;
+  --ev-ok-soft:color-mix(in srgb,#10b981 12%,transparent);
+  --ev-warn:#d97706;
+  --ev-warn-fg:#92400e;
+  --ev-warn-soft:color-mix(in srgb,#f59e0b 14%,transparent);
+  --ev-err:#dc2626;
+  --ev-err-fg:#991b1b;
+  --ev-err-soft:color-mix(in srgb,#ef4444 11%,transparent);
+  --ev-active-bg:var(--dsw-alias-button-primary-fill,#5b21b6);
+  --ev-active-fg:var(--dsw-alias-label-primary-foreground,#ffffff);
+  --ev-primary-bg:#5b21b6;
+  --ev-primary-bg-hover:#4c1d95;
+  --ev-primary-fg:#ffffff;
+  color:var(--dsw-alias-label-primary,#18181b);
   font-size:13px; line-height:1.6;
   padding:22px 26px 48px;
   display:flex; flex-direction:column; gap:16px;
   max-width:1120px; margin:0 auto; min-width:0;
   font-feature-settings:"tnum" 1;
 }
+body[data-ds-dark-theme] .ev-root{
+  --ev-brand:#8b7cf6;
+  --ev-brand-fg:#ddd6fe;
+  --ev-brand-soft:color-mix(in srgb,#8b7cf6 18%,transparent);
+  --ev-brand-border:color-mix(in srgb,#8b7cf6 42%,transparent);
+  --ev-ok:#34d399;
+  --ev-ok-fg:#6ee7b7;
+  --ev-ok-soft:color-mix(in srgb,#34d399 14%,transparent);
+  --ev-warn:#fbbf24;
+  --ev-warn-fg:#fde68a;
+  --ev-warn-soft:color-mix(in srgb,#fbbf24 15%,transparent);
+  --ev-err:#f87171;
+  --ev-err-fg:#fca5a5;
+  --ev-err-soft:color-mix(in srgb,#f87171 14%,transparent);
+  --ev-primary-bg:#6d28d9;
+  --ev-primary-bg-hover:#7c3aed;
+  --ev-primary-fg:#ffffff;
+}
+
+.ev-brief-wrap{display:flex;flex-direction:column;gap:14px}
+.ev-brief-title{margin:6px 0 0;font-size:16px;font-weight:700;color:var(--dsw-alias-label-primary)}
+
+/* 🌌 技能星系拓扑图 */
+.ev-galaxy-card{border-radius:12px;padding:12px 16px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1)}
+.ev-galaxy-svg-wrap{width:100%;overflow-x:auto}
+.ev-galaxy-svg{width:100%;max-height:255px;display:block}
+.ev-orbit-ring{fill:none;stroke:var(--dsw-alias-border-l2);stroke-width:1.2;stroke-dasharray:4 4;opacity:.65}
+.ev-orbit-ring-outer{stroke-dasharray:2 5;opacity:.5}
+.ev-ray-skill{stroke:var(--ev-ok);stroke-width:1.3;opacity:.35}
+.ev-ray-draft{stroke:var(--ev-warn);stroke-width:1.3;stroke-dasharray:3 3;opacity:.45}
+.ev-cluster-link{stroke:var(--ev-brand);stroke-width:1.8;stroke-dasharray:4 3;opacity:.75}
+.ev-core-node{fill:var(--ev-primary-bg);stroke:var(--ev-brand);stroke-width:2.5}
+.ev-core-text{fill:#ffffff;font-size:9.5px;font-weight:700;letter-spacing:.03em}
+.ev-planet-group{cursor:pointer;transition:opacity .15s ease}
+.ev-planet-group:hover{opacity:.82}
+.ev-planet-skill{fill:var(--ev-ok);stroke:var(--dsw-alias-bg-layer-1);stroke-width:2}
+.ev-planet-draft{fill:var(--ev-warn);stroke:var(--dsw-alias-bg-layer-1);stroke-width:2}
+.ev-planet-pulse{fill:var(--ev-warn);opacity:.22;animation:ev-pulse 2.2s infinite ease-in-out}
+@keyframes ev-pulse{0%,100%{transform:scale(0.85);opacity:.18}50%{transform:scale(1.22);opacity:.38}}
+.ev-planet-label{fill:var(--dsw-alias-label-primary);font-size:10.5px;font-weight:650;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.ev-galaxy-legend-box{fill:var(--dsw-alias-bg-layer-2);stroke:var(--dsw-alias-border-l2);stroke-width:1}
+.ev-legend-title{fill:var(--dsw-alias-label-primary);font-size:12px;font-weight:700}
+.ev-legend-item{fill:var(--dsw-alias-label-primary);font-size:11px;font-weight:550}
+.ev-legend-hint{fill:var(--dsw-alias-label-secondary);font-size:10.5px}
+
+/* 🎯 触发器 ──▶ 💡 核心定位 双节点顶栏 */
+.ev-trigger-banner{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+.ev-trigger-node{padding:11px 14px;border-radius:10px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);display:flex;flex-direction:column;gap:5px}
+.ev-node-tag{display:inline-flex;align-self:flex-start;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.ev-node-tag-brand{background:var(--ev-brand-soft);color:var(--ev-brand-fg)}
+.ev-node-tag-ok{background:var(--ev-ok-soft);color:var(--ev-ok-fg)}
+.ev-node-body{font-size:12.5px;line-height:1.55;color:var(--dsw-alias-label-primary);font-weight:550}
+.ev-flow-arrow{display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--ev-brand-fg);font-size:14px;padding:0 2px}
+
+/* ⚡ 技能执行节点蓝图 (Node-Edge Blueprint) */
+.ev-blueprint-box{padding:13px 15px;border-radius:11px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);display:flex;flex-direction:column;gap:10px}
+.ev-blueprint-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ev-step-chain{display:flex;flex-direction:column;gap:4px}
+.ev-step-node{padding:10px 13px;border-radius:9px;background:var(--dsw-alias-bg-layer-1);border:1.5px solid var(--dsw-alias-border-l2);display:flex;flex-direction:column;gap:5px;transition:all .15s ease}
+.ev-step-node:hover{border-color:var(--ev-brand)}
+.ev-step-node-selected{border-color:var(--ev-brand);background:var(--ev-brand-soft)}
+.ev-step-node-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ev-step-badge{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px;background:var(--ev-brand-soft);color:var(--ev-brand-fg)}
+.ev-step-inject-btn{border:1px solid var(--ev-brand-border);background:var(--ev-brand-soft);color:var(--ev-brand-fg);border-radius:6px;padding:2px 9px;font-size:11px;font-weight:650;cursor:pointer;font-family:inherit;transition:all .15s ease}
+.ev-step-inject-btn:hover{background:var(--ev-primary-bg);color:#ffffff;border-color:var(--ev-primary-bg)}
+.ev-step-node-text{font-size:12.5px;color:var(--dsw-alias-label-primary);line-height:1.55}
+.ev-step-connector{text-align:center;font-size:12px;font-weight:700;color:var(--ev-brand-fg);line-height:1}
+.ev-pitfall-wall{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:4px}
+.ev-pitfall-shield{padding:8px 11px;border-radius:8px;background:var(--ev-warn-soft);border:1px solid color-mix(in srgb,var(--ev-warn) 42%,transparent);font-size:11.5px;color:var(--dsw-alias-label-primary);display:flex;flex-direction:column;gap:3px}
+.ev-pitfall-icon{font-size:11px;font-weight:700;color:var(--ev-warn-fg)}
+
+/* 🔀 三路可视化决策后果推演沙盘 */
+.ev-sandbox-box{padding:13px 15px;border-radius:11px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);display:flex;flex-direction:column;gap:11px}
+.ev-decision-Selector{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}
+.ev-decision-card{padding:11px 13px;border-radius:10px;background:var(--dsw-alias-bg-layer-1);border:2px solid var(--dsw-alias-border-l2);cursor:pointer;transition:all .15s ease;display:flex;flex-direction:column;gap:3px}
+.ev-decision-card:hover{border-color:var(--ev-brand)}
+.ev-decision-title{font-size:12.5px;font-weight:700;color:var(--dsw-alias-label-primary)}
+.ev-decision-sub{font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.45}
+.ev-decision-ok.ev-decision-card-active{border-color:var(--ev-ok);background:var(--ev-ok-soft)}
+.ev-decision-brand.ev-decision-card-active{border-color:var(--ev-brand);background:var(--ev-brand-soft)}
+.ev-decision-err.ev-decision-card-active{border-color:var(--ev-err);background:var(--ev-err-soft)}
+
+.ev-sim-stage{padding:12px 14px;border-radius:10px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);display:flex;flex-direction:column;gap:10px}
+.ev-sim-stage-ok{border-left:4px solid var(--ev-ok)}
+.ev-sim-stage-brand{border-left:4px solid var(--ev-brand)}
+.ev-sim-stage-err{border-left:4px solid var(--ev-err)}
+.ev-sim-flow{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ev-sim-box{padding:6px 11px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);font-size:11.5px;font-weight:650;color:var(--dsw-alias-label-primary)}
+.ev-sim-box-highlight-ok{background:var(--ev-ok-soft);border-color:var(--ev-ok);color:var(--ev-ok-fg)}
+.ev-sim-box-highlight-brand{background:var(--ev-brand-soft);border-color:var(--ev-brand);color:var(--ev-brand-fg)}
+.ev-sim-box-highlight-err{background:var(--ev-err-soft);border-color:var(--ev-err);color:var(--ev-err-fg)}
+.ev-sim-arrow{font-weight:700;color:var(--dsw-alias-label-secondary);font-size:12px}
+.ev-sim-desc{font-size:12px;color:var(--dsw-alias-label-primary);line-height:1.55}
+.ev-sim-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px}
+
+.ev-block-palette{display:flex;gap:7px;flex-wrap:wrap}
+.ev-idea-block{border:1.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);border-radius:8px;padding:6px 11px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s ease}
+.ev-idea-block:hover{border-color:var(--ev-brand)}
+.ev-idea-block-on{background:var(--ev-primary-bg);color:#ffffff;border-color:var(--ev-primary-bg)}
+
+.ev-brief-section{padding:12px 14px;border-radius:10px;
+  background:var(--ev-brand-soft);
+  border:1px solid var(--ev-brand-border)}
+.ev-brief-label{font-size:12px;font-weight:700;color:var(--ev-brand-fg);margin-bottom:4px}
+.ev-brief-text{font-size:12.5px;line-height:1.65;color:var(--dsw-alias-label-primary)}
+.ev-brief-rules{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px;
+  font-size:12px;color:var(--dsw-alias-label-primary)}
+.ev-impact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.ev-impact-box{padding:11px 14px;border-radius:10px;display:flex;flex-direction:column;gap:4px}
+.ev-impact-approve{background:var(--ev-ok-soft);border:1px solid color-mix(in srgb,var(--ev-ok) 40%,transparent)}
+.ev-impact-reject{background:var(--ev-err-soft);border:1px solid color-mix(in srgb,var(--ev-err) 40%,transparent)}
+.ev-impact-head{font-size:12px;font-weight:700}
+.ev-impact-approve .ev-impact-head{color:var(--ev-ok-fg)}
+.ev-impact-reject .ev-impact-head{color:var(--ev-err-fg)}
+.ev-impact-body{font-size:12px;line-height:1.55;color:var(--dsw-alias-label-primary)}
+.ev-ai-analysis{padding:11px 14px;border-radius:10px;
+  background:var(--ev-ok-soft);
+  border:1px solid color-mix(in srgb,var(--ev-ok) 45%,transparent)}
+.ev-directive-box{padding:12px 14px;border-radius:10px;display:flex;flex-direction:column;gap:8px;
+  background:var(--dsw-alias-bg-layer-2);
+  border:1px solid var(--dsw-alias-border-l2)}
+.ev-directive-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ev-quick-directives{display:flex;gap:6px;flex-wrap:wrap}
+.ev-textarea{resize:vertical;min-height:68px;line-height:1.55}
+
 .ev-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  padding-bottom:15px;border-bottom:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 65%,transparent)}
+  padding-bottom:15px;border-bottom:1px solid var(--dsw-alias-border-l1)}
 .ev-head-left{display:flex;gap:13px;align-items:flex-start;min-width:0;flex:1}
 .ev-logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex-shrink:0;
-  background:linear-gradient(135deg,color-mix(in srgb,#8b7cf6 30%,transparent),color-mix(in srgb,#22d3ee 18%,transparent));
-  color:#c4b5fd;border:1px solid color-mix(in srgb,#8b7cf6 35%,transparent);
-  box-shadow:0 2px 12px color-mix(in srgb,#8b7cf6 22%,transparent)}
-.ev-title{margin:0;font-size:18.5px;font-weight:680;letter-spacing:.01em;line-height:1.25}
-.ev-subtitle{margin:4px 0 0;color:var(--dsw-alias-label-secondary,#a1a1aa);font-size:12px;line-height:1.55}
+  background:var(--ev-primary-bg);color:#ffffff;
+  box-shadow:0 2px 10px color-mix(in srgb,var(--ev-primary-bg) 28%,transparent)}
+.ev-title{margin:0;font-size:18.5px;font-weight:700;letter-spacing:.01em;line-height:1.25;color:var(--dsw-alias-label-primary)}
+.ev-subtitle{margin:4px 0 0;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.55}
 .ev-head-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 
-.ev-tabs{display:flex;gap:4px;padding:4px;border-radius:12px;align-self:flex-start;flex-wrap:wrap;
-  background:var(--dsw-alias-bg-layer-2,#27272a);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 75%,transparent)}
-.ev-tab{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;cursor:pointer;
-  color:var(--dsw-alias-label-secondary,#a1a1aa);padding:7px 13px;font-size:12.5px;font-weight:600;
-  border-radius:9px;transition:all .15s ease;white-space:nowrap;font-family:inherit}
-.ev-tab:hover{color:var(--dsw-alias-label-primary,#f4f4f5)}
-.ev-tab-active{background:color-mix(in srgb,#8b7cf6 22%,var(--dsw-alias-bg-base,#09090b));
-  color:#ddd6fe;box-shadow:0 1px 4px rgba(0,0,0,.3);border:1px solid color-mix(in srgb,#8b7cf6 42%,transparent)}
-.ev-tab-badge{background:color-mix(in srgb,#8b7cf6 28%,transparent);color:#ddd6fe;
+/* 顶部标签栏：选中态使用实心高对比前景色，彻底解决明暗主题下选中看不清字的问题 */
+.ev-tabs{display:flex;gap:4px;padding:4px;border-radius:11px;align-self:flex-start;flex-wrap:wrap;
+  background:var(--dsw-alias-bg-layer-2);
+  border:1px solid var(--dsw-alias-border-l1)}
+.ev-tab{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;background:transparent;cursor:pointer;
+  color:var(--dsw-alias-label-secondary);padding:7px 14px;font-size:12.5px;font-weight:600;
+  border-radius:8px;transition:all .15s ease;white-space:nowrap;font-family:inherit}
+.ev-tab:hover:not(.ev-tab-active){color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1)}
+.ev-tab-active{
+  background:var(--ev-active-bg);
+  color:var(--ev-active-fg);
+  font-weight:650;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+}
+.ev-tab-badge{background:var(--ev-brand-soft);color:var(--ev-brand-fg);font-weight:700;
   border-radius:999px;padding:0 6px;font-size:10.5px;min-width:16px;text-align:center;line-height:16px}
-.ev-tab-badge-alert{background:color-mix(in srgb,#fbbf24 32%,transparent);color:#fde68a}
+.ev-tab-active .ev-tab-badge{
+  background:color-mix(in srgb,var(--ev-active-fg) 22%,transparent);
+  color:var(--ev-active-fg);
+}
+.ev-tab-badge-alert{background:var(--ev-warn-soft);color:var(--ev-warn-fg)}
 
 .ev-content{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ev-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px}
 .ev-stat{display:flex;gap:11px;align-items:flex-start;padding:14px 15px;border-radius:12px;
-  background:var(--dsw-alias-bg-layer-1,#18181b);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 60%,transparent);
+  background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l1);
   transition:all .15s ease}
 .ev-stat-click{cursor:pointer}
-.ev-stat:hover{border-color:color-mix(in srgb,#8b7cf6 42%,transparent);transform:translateY(-1px)}
+.ev-stat:hover{border-color:var(--ev-brand);transform:translateY(-1px)}
 .ev-stat-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;
-  background:var(--ev-brand-soft);color:#c4b5fd}
-.ev-stat-warn .ev-stat-icon{background:color-mix(in srgb,#fbbf24 15%,transparent);color:#fcd34d}
-.ev-stat-ok .ev-stat-icon{background:color-mix(in srgb,#34d399 15%,transparent);color:#6ee7b7}
-.ev-stat-value{font-size:20px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
-.ev-stat-label{font-size:11.5px;color:var(--dsw-alias-label-secondary,#a1a1aa);margin-top:1px}
-.ev-stat-sub{font-size:10.5px;color:var(--dsw-alias-label-secondary,#71717a);margin-top:3px;opacity:.9}
+  background:var(--ev-brand-soft);color:var(--ev-brand-fg)}
+.ev-stat-warn .ev-stat-icon{background:var(--ev-warn-soft);color:var(--ev-warn-fg)}
+.ev-stat-ok .ev-stat-icon{background:var(--ev-ok-soft);color:var(--ev-ok-fg)}
+.ev-stat-value{font-size:20px;font-weight:700;line-height:1.15;letter-spacing:-.01em;color:var(--dsw-alias-label-primary)}
+.ev-stat-label{font-size:11.5px;color:var(--dsw-alias-label-secondary);margin-top:1px;font-weight:550}
+.ev-stat-sub{font-size:10.5px;color:var(--dsw-alias-label-secondary);margin-top:3px;opacity:.85}
 
 .ev-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding:11px 14px;border-radius:11px;
-  background:var(--dsw-alias-bg-layer-1,#18181b);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 65%,transparent)}
-.ev-banner-ok{border-left:3px solid #34d399}
-.ev-banner-warn{border-left:3px solid #fbbf24}
-.ev-banner-brand{border-left:3px solid #8b7cf6}
+  background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l2)}
+.ev-banner-ok{border-left:4px solid var(--ev-ok)}
+.ev-banner-warn{border-left:4px solid var(--ev-warn)}
+.ev-banner-brand{border-left:4px solid var(--ev-brand)}
 .ev-banner-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
-.ev-banner-desc{font-size:11.5px;color:var(--dsw-alias-label-secondary,#a1a1aa)}
+.ev-banner-desc{font-size:11.5px;color:var(--dsw-alias-label-secondary)}
 
 .ev-section{display:flex;flex-direction:column;gap:10px}
 .ev-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.ev-section-title{margin:0;font-size:13.5px;font-weight:650;letter-spacing:.01em}
+.ev-section-title{margin:0;font-size:13.5px;font-weight:700;letter-spacing:.01em;color:var(--dsw-alias-label-primary)}
 .ev-section-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .ev-list{display:flex;flex-direction:column;gap:9px}
 
-.ev-card{border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:10px;
-  background:var(--dsw-alias-bg-layer-1,#18181b);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 60%,transparent);
+.ev-card{border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+  background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l1);
   transition:border-color .15s ease}
-.ev-card:hover{border-color:color-mix(in srgb,#8b7cf6 30%,transparent)}
-.ev-card-draft{border-left:3px solid color-mix(in srgb,#fbbf24 70%,transparent)}
-.ev-workbench{border-left:3px solid color-mix(in srgb,#8b7cf6 75%,transparent)}
+.ev-card:hover{border-color:var(--dsw-alias-border-l2)}
+.ev-card-draft{border-left:4px solid var(--ev-warn)}
+.ev-workbench{border-left:4px solid var(--ev-brand)}
 .ev-card-head,.ev-row-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
 .ev-card-title-wrap{min-width:0;flex:1}
-.ev-card-desc{color:var(--dsw-alias-label-secondary,#a1a1aa);font-size:12px;margin-top:4px}
+.ev-card-desc{color:var(--dsw-alias-label-secondary);font-size:12px;margin-top:4px}
 .ev-card-actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
 .ev-resources{display:flex;gap:6px;flex-wrap:wrap}
 
 .ev-row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;
   padding:11px 14px;border-radius:11px;
-  background:var(--dsw-alias-bg-layer-1,#18181b);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 55%,transparent)}
+  background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l1)}
 .ev-row-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
 .ev-row-title{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.ev-row-desc{color:var(--dsw-alias-label-secondary,#a1a1aa);font-size:11.5px;line-height:1.55}
+.ev-row-desc{color:var(--dsw-alias-label-secondary);font-size:11.5px;line-height:1.55}
 .ev-row-meta{display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap}
 .ev-signals{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
-.ev-ts{font-size:10.5px;color:var(--dsw-alias-label-secondary,#71717a);font-variant-numeric:tabular-nums}
-.ev-metric{display:inline-flex;align-items:center;gap:3px;font-size:11px;
-  color:var(--dsw-alias-label-secondary,#a1a1aa)}
+.ev-ts{font-size:10.5px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}
+.ev-metric{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--dsw-alias-label-secondary)}
 
-.ev-skill-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
-  color:#c4b5fd;background:var(--ev-brand-soft);padding:1px 7px;border-radius:6px}
-.ev-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
-.ev-sha{color:#a5b4fc}
+.ev-skill-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:650;
+  color:var(--ev-brand-fg);background:var(--ev-brand-soft);border:1px solid var(--ev-brand-border);
+  padding:1px 7px;border-radius:6px}
+.ev-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--dsw-alias-label-primary)}
+.ev-sha{color:var(--ev-brand-fg);font-weight:600}
 
 .ev-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;
-  font-size:10.5px;line-height:1.5;white-space:nowrap;font-weight:550;
-  border:1px solid var(--dsw-alias-border-l2,#3f3f46);
-  background:var(--dsw-alias-bg-layer-2,#27272a);
-  color:var(--dsw-alias-label-secondary,#a1a1aa)}
-.ev-chip-click{cursor:pointer}
-.ev-chip-brand{color:#c4b5fd;border-color:color-mix(in srgb,#8b7cf6 40%,transparent);
-  background:color-mix(in srgb,#8b7cf6 13%,transparent)}
-.ev-chip-ok{color:#6ee7b7;border-color:color-mix(in srgb,#34d399 38%,transparent);
-  background:color-mix(in srgb,#34d399 11%,transparent)}
-.ev-chip-warn{color:#fcd34d;border-color:color-mix(in srgb,#fbbf24 38%,transparent);
-  background:color-mix(in srgb,#fbbf24 11%,transparent)}
-.ev-chip-idle{color:var(--dsw-alias-label-secondary,#71717a)}
+  font-size:10.5px;line-height:1.5;white-space:nowrap;font-weight:600;
+  border:1px solid var(--dsw-alias-border-l2);
+  background:var(--dsw-alias-bg-layer-2);
+  color:var(--dsw-alias-label-primary)}
+.ev-chip-click{cursor:pointer;transition:all .15s ease}
+.ev-chip-click:hover{border-color:var(--ev-brand);background:var(--ev-brand-soft);color:var(--ev-brand-fg)}
+.ev-chip-brand{color:var(--ev-brand-fg);border-color:var(--ev-brand-border);background:var(--ev-brand-soft)}
+.ev-chip-ok{color:var(--ev-ok-fg);border-color:color-mix(in srgb,var(--ev-ok) 40%,transparent);background:var(--ev-ok-soft)}
+.ev-chip-warn{color:var(--ev-warn-fg);border-color:color-mix(in srgb,var(--ev-warn) 42%,transparent);background:var(--ev-warn-soft)}
+.ev-chip-idle{color:var(--dsw-alias-label-secondary)}
 
-.ev-btn{display:inline-flex;align-items:center;gap:5px;border-radius:8px;padding:5px 11px;
-  font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;
-  border:1px solid var(--dsw-alias-border-l2,#3f3f46);
-  background:var(--dsw-alias-bg-layer-2,#27272a);
-  color:var(--dsw-alias-label-primary,#e4e4e7);
+.ev-btn{display:inline-flex;align-items:center;gap:5px;border-radius:8px;padding:6px 12px;
+  font-size:12px;font-weight:650;cursor:pointer;font-family:inherit;
+  border:1px solid var(--dsw-alias-border-l2);
+  background:var(--dsw-alias-bg-layer-2);
+  color:var(--dsw-alias-label-primary);
   transition:all .15s ease;white-space:nowrap}
-.ev-btn:hover:not(:disabled){border-color:color-mix(in srgb,#8b7cf6 50%,transparent);color:#fff}
+.ev-btn:hover:not(:disabled){border-color:var(--ev-brand);background:var(--ev-brand-soft);color:var(--ev-brand-fg)}
 .ev-btn:disabled{opacity:.45;cursor:not-allowed}
-.ev-btn-primary{background:color-mix(in srgb,#8b7cf6 24%,var(--dsw-alias-bg-layer-2,#27272a));
-  border-color:color-mix(in srgb,#8b7cf6 48%,transparent);color:#ede9fe}
-.ev-btn-primary:hover:not(:disabled){background:color-mix(in srgb,#8b7cf6 34%,var(--dsw-alias-bg-layer-2,#27272a))}
-.ev-btn-danger{color:#fca5a5;border-color:color-mix(in srgb,#f87171 30%,transparent)}
-.ev-btn-danger:hover:not(:disabled){background:color-mix(in srgb,#f87171 14%,transparent);border-color:color-mix(in srgb,#f87171 55%,transparent)}
-.ev-btn-ghost{background:transparent}
+.ev-btn-primary{
+  background:var(--ev-primary-bg);
+  border-color:var(--ev-primary-bg);
+  color:var(--ev-primary-fg);
+}
+.ev-btn-primary:hover:not(:disabled){
+  background:var(--ev-primary-bg-hover);
+  border-color:var(--ev-primary-bg-hover);
+  color:#ffffff;
+}
+.ev-btn-danger{color:var(--ev-err-fg);border-color:color-mix(in srgb,var(--ev-err) 40%,transparent);background:var(--ev-err-soft)}
+.ev-btn-danger:hover:not(:disabled){background:var(--ev-err);border-color:var(--ev-err);color:#ffffff}
+.ev-btn-ghost{background:var(--dsw-alias-bg-layer-1)}
 
-.ev-icon-btn{display:grid;place-items:center;width:27px;height:27px;border-radius:7px;cursor:pointer;
-  border:1px solid var(--dsw-alias-border-l2,#3f3f46);
-  background:var(--dsw-alias-bg-layer-2,#27272a);
-  color:var(--dsw-alias-label-secondary,#a1a1aa);transition:all .15s ease}
-.ev-icon-btn:hover:not(:disabled){color:#fff;border-color:color-mix(in srgb,#8b7cf6 50%,transparent)}
+.ev-icon-btn{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--dsw-alias-border-l2);
+  background:var(--dsw-alias-bg-layer-2);
+  color:var(--dsw-alias-label-primary);transition:all .15s ease}
+.ev-icon-btn:hover:not(:disabled){color:var(--ev-brand-fg);border-color:var(--ev-brand);background:var(--ev-brand-soft)}
 .ev-icon-btn:disabled{opacity:.4;cursor:not-allowed}
-.ev-icon-btn-on{color:#c4b5fd;border-color:color-mix(in srgb,#8b7cf6 55%,transparent);
-  background:color-mix(in srgb,#8b7cf6 18%,transparent)}
+.ev-icon-btn-on{color:var(--ev-active-fg);border-color:transparent;background:var(--ev-active-bg)}
 
-/* 行号语法高亮 Markdown 预览器 */
+/* 行号语法高亮 Markdown 预览器（固定深色代码底板，确保明暗主题下代码高亮始终清晰） */
 .ev-md-viewer{border-radius:9px;overflow:hidden;
-  background:color-mix(in srgb,var(--dsw-alias-bg-base,#09090b) 80%,#000);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 50%,transparent)}
+  background:#0f172a;color:#f1f5f9;
+  border:1px solid var(--dsw-alias-border-l2)}
 .ev-fm-bar{display:flex;flex-wrap:wrap;gap:10px;padding:7px 12px;
-  background:color-mix(in srgb,#8b7cf6 10%,transparent);
-  border-bottom:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 45%,transparent);
+  background:#1e1b4b;
+  border-bottom:1px solid #312e81;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
 .ev-fm-item{display:inline-flex;gap:4px}
 .ev-fm-key{color:#c4b5fd;font-weight:600}
-.ev-fm-val{color:var(--dsw-alias-label-secondary,#d4d4d8)}
+.ev-fm-val{color:#e2e8f0}
 .ev-code-lines{max-height:360px;overflow:auto;padding:8px 0;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.65}
 .ev-line{display:flex;padding:0 12px;min-height:1.65em}
-.ev-line:hover{background:color-mix(in srgb,#8b7cf6 8%,transparent)}
+.ev-line:hover{background:rgba(139,124,246,.14)}
 .ev-line-num{width:32px;flex-shrink:0;user-select:none;text-align:right;padding-right:12px;
-  color:var(--dsw-alias-label-secondary,#52525b);font-size:10.5px}
-.ev-line-txt{white-space:pre-wrap;word-break:break-word;flex:1;color:var(--dsw-alias-label-primary,#e4e4e7)}
+  color:#64748b;font-size:10.5px}
+.ev-line-txt{white-space:pre-wrap;word-break:break-word;flex:1;color:#f1f5f9}
 .ev-line-h1 .ev-line-txt{color:#c4b5fd;font-weight:700}
 .ev-line-h2 .ev-line-txt{color:#6ee7b7;font-weight:650}
 .ev-line-bullet .ev-line-txt{color:#fde68a}
@@ -1896,89 +2384,93 @@ window.__ModuleLoader__.load({
 
 /* 结构化 SHA Diff 表格 */
 .ev-diff-table-wrap{overflow-x:auto;border-radius:8px;
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 50%,transparent)}
+  border:1px solid var(--dsw-alias-border-l2)}
 .ev-diff-table{width:100%;border-collapse:collapse;font-size:11.5px;text-align:left}
-.ev-diff-table th{padding:7px 10px;background:var(--dsw-alias-bg-layer-2,#27272a);
-  color:var(--dsw-alias-label-secondary,#a1a1aa);font-weight:600;border-bottom:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 50%,transparent)}
-.ev-diff-table td{padding:7px 10px;border-bottom:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 30%,transparent)}
-.ev-diff-row-ok{background:color-mix(in srgb,#34d399 6%,transparent)}
-.ev-diff-row-warn{background:color-mix(in srgb,#fbbf24 6%,transparent)}
-.ev-diff-row-err{background:color-mix(in srgb,#f87171 6%,transparent)}
+.ev-diff-table th{padding:7px 10px;background:var(--dsw-alias-bg-layer-2);
+  color:var(--dsw-alias-label-secondary);font-weight:650;border-bottom:1px solid var(--dsw-alias-border-l2)}
+.ev-diff-table td{padding:7px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-primary)}
+.ev-diff-row-ok{background:var(--ev-ok-soft)}
+.ev-diff-row-warn{background:var(--ev-warn-soft)}
+.ev-diff-row-err{background:var(--ev-err-soft)}
 
-/* 搜索与过滤栏 */
+/* 搜索与过滤栏：选中态使用实心高对比填充 */
 .ev-filter-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .ev-search-wrap{display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:9px;
-  background:var(--dsw-alias-bg-layer-1,#18181b);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 65%,transparent);min-width:220px;flex:1;max-width:340px}
-.ev-search-input{border:none;background:transparent;outline:none;color:var(--dsw-alias-label-primary,#e4e4e7);
+  background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l2);min-width:220px;flex:1;max-width:340px}
+.ev-search-input{border:none;background:transparent;outline:none;color:var(--dsw-alias-label-primary);
   font-size:12px;width:100%;font-family:inherit}
 .ev-filter-pills{display:flex;gap:5px;flex-wrap:wrap}
-.ev-pill-btn{border:1px solid var(--dsw-alias-border-l2,#3f3f46);background:var(--dsw-alias-bg-layer-2,#27272a);
-  color:var(--dsw-alias-label-secondary,#a1a1aa);border-radius:999px;padding:4px 11px;font-size:11px;
+.ev-pill-btn{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);
+  color:var(--dsw-alias-label-secondary);border-radius:999px;padding:4px 12px;font-size:11.5px;
   font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s ease}
-.ev-pill-btn-on{color:#ddd6fe;border-color:color-mix(in srgb,#8b7cf6 50%,transparent);
-  background:color-mix(in srgb,#8b7cf6 20%,transparent)}
+.ev-pill-btn:hover:not(.ev-pill-btn-on){color:var(--dsw-alias-label-primary);border-color:var(--ev-brand)}
+.ev-pill-btn-on{
+  background:var(--ev-active-bg);
+  color:var(--ev-active-fg);
+  border-color:transparent;
+  font-weight:650;
+}
 
 /* 建伞合并计划预览盒 */
-.ev-plan-box{display:flex;flex-direction:column;gap:7px;padding:10px 12px;border-radius:9px;
-  background:color-mix(in srgb,var(--dsw-alias-bg-base,#09090b) 65%,transparent);
-  border:1px solid color-mix(in srgb,#8b7cf6 35%,transparent)}
-.ev-plan-summary{font-size:12px;color:#ddd6fe;font-weight:550}
+.ev-plan-box{display:flex;flex-direction:column;gap:7px;padding:11px 13px;border-radius:9px;
+  background:var(--ev-brand-soft);
+  border:1px solid var(--ev-brand-border)}
+.ev-plan-summary{font-size:12px;color:var(--dsw-alias-label-primary);font-weight:600}
 .ev-plan-list{display:flex;flex-direction:column;gap:5px}
-.ev-plan-item{display:flex;align-items:center;gap:8px;font-size:11.5px}
+.ev-plan-item{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dsw-alias-label-primary)}
 
 .ev-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
   padding:36px 20px;text-align:center;border-radius:12px;
-  border:1px dashed color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 70%,transparent);
-  background:color-mix(in srgb,var(--dsw-alias-bg-layer-1,#18181b) 55%,transparent)}
-.ev-empty-icon{color:var(--dsw-alias-label-secondary,#52525b);opacity:.85}
-.ev-empty-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-secondary,#a1a1aa)}
-.ev-empty-hint{font-size:11.5px;color:var(--dsw-alias-label-secondary,#71717a);max-width:460px;line-height:1.6}
+  border:1px dashed var(--dsw-alias-border-l2);
+  background:var(--dsw-alias-bg-layer-1)}
+.ev-empty-icon{color:var(--dsw-alias-label-secondary);opacity:.85}
+.ev-empty-title{font-size:13px;font-weight:650;color:var(--dsw-alias-label-primary)}
+.ev-empty-hint{font-size:11.5px;color:var(--dsw-alias-label-secondary);max-width:460px;line-height:1.6}
 
-.ev-loading{padding:60px;text-align:center;color:var(--dsw-alias-label-secondary,#a1a1aa);font-size:12.5px}
+.ev-loading{padding:60px;text-align:center;color:var(--dsw-alias-label-secondary);font-size:12.5px}
 
 .ev-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}
 .ev-flow-step{display:flex;flex-direction:column;gap:5px;padding:11px 13px;border-radius:10px;
-  background:var(--dsw-alias-bg-layer-1,#18181b);
-  border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 55%,transparent)}
+  background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l1)}
 .ev-flow-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .ev-flow-num{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;flex-shrink:0;
-  font-size:10.5px;font-weight:700;background:var(--ev-brand-soft);color:#c4b5fd}
-.ev-flow-title{font-size:12px;font-weight:650}
-.ev-flow-desc{font-size:10.5px;color:var(--dsw-alias-label-secondary,#71717a);line-height:1.45}
+  font-size:10.5px;font-weight:700;background:var(--ev-brand-soft);color:var(--ev-brand-fg)}
+.ev-flow-title{font-size:12px;font-weight:650;color:var(--dsw-alias-label-primary)}
+.ev-flow-desc{font-size:10.5px;color:var(--dsw-alias-label-secondary);line-height:1.45}
 
 .ev-settings{display:flex;flex-direction:column;gap:16px}
 .ev-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
 .ev-field{display:flex;flex-direction:column;gap:5px}
-.ev-field-label{font-size:11.5px;font-weight:600;color:var(--dsw-alias-label-primary,#e4e4e7)}
-.ev-field-hint{font-size:10.5px;color:var(--dsw-alias-label-secondary,#71717a);line-height:1.5}
-.ev-input{width:100%;box-sizing:border-box;border-radius:8px;padding:6px 10px;font-size:12px;
-  font-family:inherit;color:var(--dsw-alias-label-primary,#e4e4e7);
-  background:var(--dsw-alias-bg-layer-2,#27272a);
-  border:1px solid var(--dsw-alias-border-l2,#3f3f46);outline:none;transition:border-color .15s ease}
-.ev-input:focus{border-color:color-mix(in srgb,#8b7cf6 60%,transparent)}
+.ev-field-label{font-size:12px;font-weight:650;color:var(--dsw-alias-label-primary)}
+.ev-field-hint{font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.5}
+.ev-input{width:100%;box-sizing:border-box;border-radius:8px;padding:7px 10px;font-size:12.5px;
+  font-family:inherit;color:var(--dsw-alias-label-primary);
+  background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l2);outline:none;transition:border-color .15s ease}
+.ev-input:focus{border-color:var(--ev-brand);box-shadow:0 0 0 2px var(--ev-brand-soft)}
 .ev-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  padding-top:13px;border-top:1px solid color-mix(in srgb,var(--dsw-alias-border-l2,#3f3f46) 55%,transparent)}
-.ev-settings-foot code{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#c4b5fd}
+  padding-top:13px;border-top:1px solid var(--dsw-alias-border-l1)}
+.ev-settings-foot code{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ev-brand-fg)}
 
 .ev-switch{display:inline-flex;align-items:center;cursor:pointer;width:fit-content}
 .ev-switch input{position:absolute;opacity:0;width:0;height:0}
 .ev-switch-track{width:38px;height:21px;border-radius:999px;position:relative;display:block;
-  background:var(--dsw-alias-bg-layer-2,#27272a);
-  border:1px solid var(--dsw-alias-border-l2,#3f3f46);transition:all .18s ease}
+  background:var(--dsw-alias-bg-layer-2);
+  border:1px solid var(--dsw-alias-border-l2);transition:all .18s ease}
 .ev-switch-thumb{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
-  background:var(--dsw-alias-label-secondary,#a1a1aa);transition:all .18s ease}
-.ev-switch input:checked + .ev-switch-track{background:color-mix(in srgb,#8b7cf6 40%,transparent);
-  border-color:color-mix(in srgb,#8b7cf6 65%,transparent)}
-.ev-switch input:checked + .ev-switch-track .ev-switch-thumb{left:19px;background:#ede9fe}
+  background:var(--dsw-alias-label-secondary);transition:all .18s ease}
+.ev-switch input:checked + .ev-switch-track{background:var(--ev-primary-bg);border-color:var(--ev-primary-bg)}
+.ev-switch input:checked + .ev-switch-track .ev-switch-thumb{left:19px;background:#ffffff}
 
 .ev-toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:9999;
   display:inline-flex;align-items:center;gap:7px;padding:9px 17px;border-radius:10px;
-  font-size:12px;font-weight:550;box-shadow:0 6px 24px rgba(0,0,0,.45);
-  animation:ev-toast-in .2s ease;background:var(--dsw-alias-bg-overlay,#18181b);
-  border:1px solid var(--dsw-alias-border-l2,#3f3f46);color:var(--dsw-alias-label-primary,#e4e4e7)}
-.ev-toast-ok{border-color:color-mix(in srgb,#34d399 45%,transparent);color:#6ee7b7}
-.ev-toast-err{border-color:color-mix(in srgb,#f87171 45%,transparent);color:#fca5a5}
+  font-size:12px;font-weight:650;box-shadow:0 6px 24px rgba(0,0,0,.28);
+  animation:ev-toast-in .2s ease;background:var(--dsw-alias-bg-layer-1);
+  border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-primary)}
+.ev-toast-ok{border-color:var(--ev-ok);color:var(--ev-ok-fg)}
+.ev-toast-err{border-color:var(--ev-err);color:var(--ev-err-fg)}
 @keyframes ev-toast-in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 
 /* 移动端与窄屏自适应（手机浏览器 / 远程连接视口） */
@@ -2000,7 +2492,10 @@ window.__ModuleLoader__.load({
   .ev-stat{padding:11px 12px;gap:9px}
   .ev-stat-value{font-size:17px}
   .ev-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-  .ev-impact-grid,.ev-settings-grid{grid-template-columns:1fr;gap:10px}
+  .ev-impact-grid,.ev-settings-grid,.ev-trigger-banner,.ev-decision-Selector{grid-template-columns:1fr;gap:10px}
+  .ev-flow-arrow{transform:rotate(90deg);padding:2px 0}
+  .ev-sim-actions{flex-direction:column}
+  .ev-sim-actions .ev-btn{width:100%;justify-content:center;min-height:40px}
   .ev-card-head,.ev-row-head,.ev-section-head{flex-direction:column;align-items:stretch;gap:9px}
   .ev-card-actions{width:100%;flex-direction:column;gap:7px}
   .ev-card-actions .ev-btn{width:100%;justify-content:center;min-height:40px;font-size:13px}
@@ -2020,19 +2515,43 @@ window.__ModuleLoader__.load({
       return h(React.Fragment, null, h('style', null, CSS), h(EvolutionPanel, props));
     }
 
+    function SidebarPanelIcon(props) {
+      const sz = typeof props?.size === 'number' ? props.size : 18;
+      return h(
+        'svg',
+        {
+          width: sz,
+          height: sz,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.85,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': true,
+        },
+        h('path', { d: 'M12 3a9 9 0 1 0 9 9' }),
+        h('path', { d: 'M12 7v5l3 3' }),
+        h('path', { d: 'M17 3l3 3-3 3' }),
+      );
+    }
+
     return {
       inject: ['slots'],
       apply(ctx) {
-        // 1. 注册到会话顶部视图栏（与「对话 / 轨迹 / 上下文 / 编队 / 专家团」同排，紧挨专家团）
-        ctx.slots.inject('conversation.view', () =>
+        // 1. 注册到左侧栏全局面板（sidebar.panellist + main，order: 15 位于「上下文洞察」(order: 20) 正上方）
+        ctx.slots.inject('main', () =>
+          ctx.slots.register({ name: 'main', key: 'dsh-evolution' }, renderWithStyles),
+        );
+        ctx.slots.inject('sidebar.panellist', () =>
           ctx.slots.register(
             {
-              name: 'conversation.view',
+              name: 'sidebar.panellist',
               id: 'dsh-evolution',
-              order: 41,
+              order: 15,
               label: () => '自进化',
             },
-            renderWithStyles,
+            SidebarPanelIcon,
           ),
         );
 

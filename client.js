@@ -1606,6 +1606,28 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'ev-section-actions' },
+              (data.drafts || []).length > 1
+                ? h(
+                    'button',
+                    {
+                      className: 'ev-btn ev-btn-ghost',
+                      disabled: busyKey === 'promote-batch',
+                      onClick: () =>
+                        act(
+                          'promote-batch',
+                          () =>
+                            api('/promote-batch', {
+                              method: 'POST',
+                              body: JSON.stringify({ comment: '一键批量采纳（单次目录刷新）' }),
+                            }),
+                          (r) => `已一次性批量采纳 ${(r?.promoted || []).length} 个技能（仅触发 1 次目录更新，零上下文膨胀）`,
+                        ),
+                      title: '在 200ms 监听窗口内一次性写入全部草稿，避免逐个点击导致会话重复追加 <available_skills> 目录',
+                    },
+                    h(Icon, { d: ICONS.check, size: 13 }),
+                    busyKey === 'promote-batch' ? '正在批量合入…' : `⚡ 一键批量采纳全部 (${(data.drafts || []).length})`,
+                  )
+                : null,
               h(
                 'button',
                 {
@@ -2571,3 +2593,5 @@ body[data-ds-dark-theme] .ev-root{
     };
   },
 });
+
+/* hmr-rev: 1794109651 */

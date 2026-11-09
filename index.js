@@ -22,7 +22,7 @@ import { runReview, activeReviewChildIds } from "./lib/reflector.js";
 import { synthesize } from "./lib/synthesizer.js";
 import { applySynthesis, listDrafts, promoteDraft, listSkills } from "./lib/applier.js";
 import { readEntries, rollbackEntry, maybeRotateLedger, gcBlobs } from "./lib/ledger.js";
-import { applyAutomaticTransitions, adoptSkill, disownSkill } from "./lib/usage.js";
+import { applyAutomaticTransitions, adoptSkill, disownSkill, bumpUsage } from "./lib/usage.js";
 import { registerEvolutionHttp, buildSnapshot as buildHttpSnapshot, refineDraftWithComment } from "./lib/http-api.js";
 import { runConsolidation } from "./lib/consolidation.js";
 
@@ -42,8 +42,8 @@ export const Config = z.object({
     .default("draft")
     .description("draft=只写 .staging/ 等人工审阅（推荐）；apply=通过闸门后直接落盘"),
 
-  minTurnsBetween: z.number().default(3).description("两次复盘之间至少间隔多少个值得复盘的回合"),
-  minMinutesBetween: z.number().default(5).description("两次复盘之间至少间隔多少分钟"),
+  minTurnsBetween: z.number().default(1).description("两次复盘之间至少间隔多少个回合"),
+  minMinutesBetween: z.number().default(2).description("两次复盘之间至少间隔多少分钟"),
 
   maxMessages: z.number().default(24).description("快照保留的最近消息条数"),
   maxChars: z.number().default(24000).description("快照总字符上限"),
@@ -52,12 +52,12 @@ export const Config = z.object({
 
   reviewModel: z
     .object({
-      provider: z.string().default(""),
-      model: z.string().default(""),
+      provider: z.string().default("magpie"),
+      model: z.string().default("seoul/auto/deepseek-v4.1-flash"),
       reasoningEffort: z.string().default(""),
     })
     .default({ provider: "", model: "", reasoningEffort: "" })
-    .description("复盘专用模型；留空则继承当前会话模型"),
+    .description("复盘专用模型；默认使用高速轻量的辅助模型避免消耗主模型配额"),
 
   curatorEnabled: z.boolean().default(true).description("是否启用技能生命周期维护（active/stale/archived）"),
   consolidate: z.boolean().default(false).description("是否启用 LLM 建伞合并（把多个窄技能合并成类级别伞技能）"),
@@ -128,7 +128,24 @@ function extractSessionEvents(session) {
 function writeLastReviewState(skillsRoot, data) {
   try {
     fs.mkdirSync(skillsRoot, { recursive: true });
-    fs.writeFileSync(path.join(skillsRoot, ".last_review.json"), JSON.stringify({ ts: new Date().toISOString(), ...data }, null, 2), "utf8");
+    const file = path.join(skillsRoot, ".last_review.json");
+    let prev = null;
+    try {
+      prev = JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch {
+      prev = null;
+    }
+    const lastSaved =
+      data.status === "saved"
+        ? { ts: new Date().toISOString(), ...data }
+        : prev?.status === "saved"
+          ? prev
+          : prev?.lastSaved ?? null;
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ ts: new Date().toISOString(), ...data, ...(lastSaved ? { lastSaved } : {}) }, null, 2),
+      "utf8",
+    );
   } catch {
     /* ignore */
   }
@@ -207,6 +224,22 @@ export function apply(ctx, rawConfig = {}) {
       buf.push(event);
       // 硬上限：单会话最多缓冲 500 条
       if (buf.length > 500) buf.splice(0, buf.length - 500);
+
+      // 当模型在真实会话中调用 `skill` 工具加载某个技能时，实时累加 .usage.json 的 useCount 与 lastUsedAt
+      if (type === "tool/call") {
+        const d = event.data && typeof event.data === "object" ? event.data : event;
+        const toolName = d.name ?? d.toolName ?? event.toolName ?? event.name;
+        if (toolName === "skill") {
+          let argObj = d.arguments ?? event.arguments;
+          if (typeof argObj === "string") {
+            try { argObj = JSON.parse(argObj); } catch { argObj = null; }
+          }
+          const loadedName = argObj?.name ?? argObj?.skill;
+          if (loadedName && typeof loadedName === "string") {
+            void bumpUsage(skillsRoot, loadedName.trim());
+          }
+        }
+      }
     }
   });
 
@@ -683,6 +716,10 @@ export function apply(ctx, rawConfig = {}) {
     if (patch.reviewModel && typeof patch.reviewModel === "object") {
       config.reviewModel = { ...config.reviewModel, ...patch.reviewModel };
     }
+    throttle.updateLimits?.({
+      minTurnsBetween: config.minTurnsBetween,
+      minMinutesBetween: config.minMinutesBetween,
+    });
     try {
       const stateDir = path.join(process.env.DSH_HOME || path.join(os.homedir(), ".dsh"), "state");
       fs.mkdirSync(stateDir, { recursive: true });
@@ -742,10 +779,23 @@ async function handleTurnEnd(session, events, ctx, { config, skillsRoot, throttl
       maxChars: config.maxChars,
     });
 
+    const allowed = bypassThrottle ? true : throttle.tick({ worth: snapshot.worth });
     if (!snapshot.worth) {
+      writeLastReviewState(skillsRoot, {
+        status: "skipped",
+        sessionId: session.id,
+        reason: snapshot.reason,
+        chars: snapshot.stats?.chars ?? 0,
+      });
       return { ok: true, action: "skipped", reason: snapshot.reason };
     }
-    if (!bypassThrottle && !throttle.tick({ worth: true })) {
+    if (!allowed) {
+      writeLastReviewState(skillsRoot, {
+        status: "throttled",
+        sessionId: session.id,
+        reason: "throttled by turn/time window",
+        signals: snapshot.signals,
+      });
       return { ok: true, action: "throttled", reason: "throttled by turn/time window" };
     }
 

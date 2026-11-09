@@ -109,6 +109,7 @@ window.__ModuleLoader__.load({
     const ICONS = {
       refresh: ['M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5', 'M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16', 'M16 16h5v5'],
       check: 'M20 6 9 17l-5-5',
+      spark: ['M12 3v4', 'M12 17v4', 'M3 12h4', 'M17 12h4', 'M5.6 5.6l2.8 2.8', 'M15.6 15.6l2.8 2.8', 'M18.4 5.6l-2.8 2.8', 'M8.4 15.6l-2.8 2.8'],
       x: ['M18 6 6 18', 'M6 6l12 12'],
       undo: ['M3 7v6h6', 'M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13'],
       pin: ['M12 17v5', 'M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1 1 1 0 0 1 1 1z'],
@@ -242,8 +243,9 @@ window.__ModuleLoader__.load({
     }
 
     // ---------- 5. 极简瑞士风待审草稿卡（保留全部简报、节点插想法、后果对比与批示功能）----------
-    function SwissDraftCard({ draft, onRefine, onPromote, onDiscard, busyKey }) {
+    function SwissDraftCard({ draft, onRefine, onPromote, onDiscard, busyKey, defaultOpen = false }) {
       const [showSource, setShowSource] = useState(false);
+      const [collapsed, setCollapsed] = useState(!defaultOpen);
       const [selectedStep, setSelectedStep] = useState(null);
       const [selectedPills, setSelectedPills] = useState([]);
       const [comment, setComment] = useState('');
@@ -280,6 +282,54 @@ window.__ModuleLoader__.load({
       };
 
       const finalDirective = [...selectedPills, comment.trim()].filter(Boolean).join('；');
+
+      // 折叠态：一行摘要 + 快选动作，避免一屏塞满 16 张全展开卡
+      if (collapsed) {
+        return h(
+          'article',
+          { className: 'gz-draft gz-draft-compact' },
+          h(
+            'div',
+            { className: 'gz-compact-row' },
+            h('span', { className: 'gz-dot', style: { background: draft.isPatch ? '#002FA7' : '#FF6B35' } }),
+            h('span', { className: 'gz-mono gz-muted' }, draft.isPatch ? 'PATCH' : 'NEW'),
+            h('span', { className: 'gz-compact-name' }, b.titleZh || draft.name),
+            h('span', { className: 'gz-compact-sum' }, b.whatItIs || draft.description || ''),
+            h(
+              'div',
+              { className: 'gz-compact-actions' },
+              h(
+                'button',
+                { type: 'button', className: 'gz-link-btn', onClick: () => setCollapsed(false) },
+                '展开审阅',
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'gz-btn ghost',
+                  style: { height: '26px', padding: '0 10px', fontSize: '11.5px' },
+                  disabled: isBusy,
+                  onClick: () => onPromote(draft.name, '同意采纳：按当前草稿直接入库', false),
+                },
+                h(SvgIcon, { d: ICONS.check, size: 12 }),
+                '采纳',
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'gz-btn ghost danger',
+                  style: { height: '26px', padding: '0 10px', fontSize: '11.5px' },
+                  disabled: isBusy,
+                  onClick: () => onDiscard(draft.name, '快速驳回'),
+                },
+                '驳回',
+              ),
+            ),
+          ),
+        );
+      }
 
       return h(
         'article',
@@ -797,6 +847,7 @@ window.__ModuleLoader__.load({
       const [skillQuery, setSkillQuery] = useState('');
       const [skillFilter, setSkillFilter] = useState('all');
       const [consolidationPlan, setConsolidationPlan] = useState(null);
+      const [tidyPlan, setTidyPlan] = useState(null);
 
       useEffect(() => {
         if (!toast) return undefined;
@@ -880,6 +931,31 @@ window.__ModuleLoader__.load({
           `draft:${name}`,
           () => api('/discard', { method: 'POST', body: JSON.stringify({ name, comment }) }),
           `已驳回并销毁草稿「${name}」`,
+        );
+
+      const handleTidyPreview = () =>
+        act(
+          'tidy-preview',
+          async () => {
+            const r = await api('/tidy', { method: 'POST', body: JSON.stringify({ dryRun: true }) });
+            setTidyPlan(r.plan);
+            return r;
+          },
+          (r) => {
+            const s = r?.plan?.summary || {};
+            return `整理方案：自动升级 ${s.autoPromote || 0} 份、自动归档 ${(s.corrupt || 0) + (s.autoDrop || 0)} 份、仅 ${s.groupsNeedingDecision || 0} 组需你决策`;
+          },
+        );
+
+      const handleTidyApply = () =>
+        act(
+          'tidy-apply',
+          async () => {
+            const r = await api('/tidy', { method: 'POST', body: JSON.stringify({ dryRun: false }) });
+            setTidyPlan(r.plan);
+            return r;
+          },
+          (r) => `已整理：${(r?.done || []).length} 项机械动作完成（全部记入 SHA-256 账本可回滚）`,
         );
 
       const handlePromoteBatch = () =>
@@ -1021,6 +1097,20 @@ window.__ModuleLoader__.load({
               h(
                 'div',
                 { className: 'gz-head-actions' },
+                drafts.length > 0
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'gz-btn',
+                        disabled: busyKey === 'tidy-preview' || busyKey === 'tidy-apply',
+                        onClick: handleTidyPreview,
+                        title: '先出方案：自动升级同名补丁、自动归档垃圾草稿，只把真正需要你决策的留下来',
+                      },
+                      h(SvgIcon, { d: ICONS.spark, size: 13 }),
+                      busyKey === 'tidy-preview' ? '正在分析…' : `一键整理 (${drafts.length})`,
+                    )
+                  : null,
                 drafts.length > 1
                   ? h(
                       'button',
@@ -1031,7 +1121,7 @@ window.__ModuleLoader__.load({
                         onClick: handlePromoteBatch,
                       },
                       h(SvgIcon, { d: ICONS.check, size: 13 }),
-                      busyKey === 'promote-batch' ? '批量入库中…' : `一键采纳全部 (${drafts.length})`,
+                      busyKey === 'promote-batch' ? '批量入库中…' : `全量采纳 (${drafts.length})`,
                     )
                   : null,
                 h(
@@ -1120,6 +1210,118 @@ window.__ModuleLoader__.load({
                         )
                       : null,
                   ),
+                  tidyPlan
+                    ? h(
+                        'div',
+                        { className: 'gz-tidy-box' },
+                        h(
+                          'div',
+                          { className: 'gz-tidy-head' },
+                          h('span', { className: 'gz-mono gz-ink' }, '整理方案'),
+                          h(
+                            'span',
+                            { className: 'gz-tidy-stats' },
+                            h('span', null, `自动升级补丁 ${tidyPlan.summary?.autoPromote || 0}`),
+                            h('span', { className: 'gz-sep' }, '/'),
+                            h('span', null, `自动归档垃圾 ${(tidyPlan.summary?.corrupt || 0) + (tidyPlan.summary?.autoDrop || 0)}`),
+                            h('span', { className: 'gz-sep' }, '/'),
+                            h('span', { className: 'gz-accent' }, `需你决策 ${tidyPlan.summary?.groupsNeedingDecision || 0} 组`),
+                          ),
+                          h(
+                            'div',
+                            { style: { marginLeft: 'auto', display: 'flex', gap: '8px' } },
+                            h(
+                              'button',
+                              { type: 'button', className: 'gz-btn ghost', onClick: () => setTidyPlan(null) },
+                              '收起',
+                            ),
+                            h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'gz-btn',
+                                disabled: busyKey === 'tidy-apply',
+                                onClick: handleTidyApply,
+                              },
+                              h(SvgIcon, { d: ICONS.check, size: 13 }),
+                              busyKey === 'tidy-apply' ? '执行中…' : '执行机械部分',
+                            ),
+                          ),
+                        ),
+                        h(
+                          'div',
+                          { className: 'gz-tidy-grid' },
+                          (tidyPlan.autoPromote || []).length
+                            ? h(
+                                'div',
+                                { className: 'gz-tidy-cell' },
+                                h('div', { className: 'gz-mono gz-ok-label' }, 'AUTO · 直接升级（可回滚）'),
+                                tidyPlan.autoPromote.map((c) =>
+                                  h('div', { key: c.name, className: 'gz-tidy-item' }, `· ${c.name} → ${c.anchor}`),
+                                ),
+                              )
+                            : null,
+                          (tidyPlan.corrupt || []).length + (tidyPlan.autoDrop || []).length
+                            ? h(
+                                'div',
+                                { className: 'gz-tidy-cell' },
+                                h('div', { className: 'gz-mono gz-muted' }, 'AUTO · 归入 .archive（不删除）'),
+                                [...(tidyPlan.corrupt || []), ...(tidyPlan.autoDrop || [])].map((c) =>
+                                  h('div', { key: c.name, className: 'gz-tidy-item' }, `· ${c.name}`),
+                                ),
+                              )
+                            : null,
+                          (tidyPlan.groups || []).length
+                            ? h(
+                                'div',
+                                { className: 'gz-tidy-cell gz-tidy-cell-wide' },
+                                h('div', { className: 'gz-mono gz-accent' }, 'HOLD · 只有这些需要你拍板'),
+                                tidyPlan.groups.map((g) =>
+                                  h(
+                                    'div',
+                                    { key: g.theme, className: 'gz-tidy-group' },
+                                    h(
+                                      'div',
+                                      { className: 'gz-tidy-group-head' },
+                                      h('span', { className: 'gz-tidy-group-name' }, g.theme),
+                                      h(
+                                        'span',
+                                        { className: 'gz-mono ' + (g.suggestion === 'merge' ? 'gz-accent' : 'gz-muted') },
+                                        g.suggestion === 'merge' ? `建议合并 ${g.members.length} 份` : '可单独采纳',
+                                      ),
+                                    ),
+                                    h(
+                                      'div',
+                                      { className: 'gz-tidy-members' },
+                                      g.members.map((m) =>
+                                        h(
+                                          'button',
+                                          {
+                                            key: m,
+                                            type: 'button',
+                                            className: 'gz-pill',
+                                            onClick: () =>
+                                              act(
+                                                `draft:${m}`,
+                                                () =>
+                                                  api('/promote', {
+                                                    method: 'POST',
+                                                    body: JSON.stringify({ name: m, comment: '一键整理：采纳', evolveWithComment: false }),
+                                                  }),
+                                                `已采纳「${m}」`,
+                                              ),
+                                          },
+                                          m,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : null,
+                        ),
+                      )
+                    : null,
                   drafts.length
                     ? h(
                         'div',
@@ -1718,6 +1920,35 @@ body[data-ds-dark-theme] .gz-shell {
 }
 .gz-toast.err { background: var(--danger); color: #ffffff; }
 
+/* 一键整理方案卡 */
+.gz-tidy-box { background: var(--paper); border: 1px solid var(--ink); margin-bottom: 18px; }
+.gz-tidy-head { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--line-subtle); flex-wrap: wrap; }
+.gz-tidy-stats { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.gz-tidy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.gz-tidy-cell { padding: 12px 16px; border-right: 1px solid var(--line-subtle); border-top: 1px solid var(--line-subtle); display: flex; flex-direction: column; gap: 5px; }
+.gz-tidy-cell-wide { grid-column: 1 / -1; border-right: 0; }
+.gz-tidy-item { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.gz-tidy-group { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px dashed var(--line-subtle); }
+.gz-tidy-group:first-of-type { border-top: 0; }
+.gz-tidy-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.gz-tidy-group-name { font-size: 12.5px; font-weight: 600; }
+.gz-tidy-members { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* 折叠态草稿行：一屏放下全部待审清单 */
+.gz-draft-compact { border-left: 2px solid transparent; }
+.gz-draft-compact:hover { border-left-color: var(--ink); }
+.gz-compact-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; flex-wrap: nowrap; min-width: 0; }
+.gz-compact-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 26ch; flex: none; }
+.gz-compact-sum { font-size: 12px; color: var(--text-helper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.gz-compact-actions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+@media (max-width: 780px) {
+  .gz-compact-row { flex-wrap: wrap; }
+  .gz-compact-name, .gz-compact-sum { max-width: none; flex: 1 1 100%; white-space: normal; }
+  .gz-compact-actions { margin-left: 0; }
+  .gz-tidy-grid { grid-template-columns: 1fr; }
+  .gz-tidy-cell { border-right: 0; }
+}
+
 @media (max-width: 780px) {
   .gz-shell { grid-template-columns: 1fr; }
   .gz-rail { height: auto; border-right: 0; border-bottom: 1px solid var(--line-subtle); padding: 14px 16px; }
@@ -1789,3 +2020,5 @@ body[data-ds-dark-theme] .gz-shell {
   },
 });
 /* hmr-rev: 1794203235 */
+
+/* hmr-rev: 1794220549 */

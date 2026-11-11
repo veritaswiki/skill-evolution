@@ -1,6 +1,6 @@
 {
   "name": "skill-evolution",
-  "version": "0.3.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "Closed-loop skill self-evolution plugin for DSH: post-turn review, Chinese briefing & mandatory directive fusion, 4-gate safety validation, SHA-256 content-addressed ledger with single-entry rollback, LLM umbrella consolidation, and a Web/Mobile/Remote review workbench.",
   "license": "MIT",

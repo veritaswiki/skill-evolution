@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0] - 2026-11-11
+
+First public release.
+
+> Version note: earlier iterations used internal sequence numbers (the sections below). The public series restarts here at 0.1.0; internal numbers are not carried over.
+
+
 All notable changes to `skill-evolution` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),

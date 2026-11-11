@@ -12,6 +12,12 @@
 
 ---
 
+## 界面
+
+![自进化工作台：概览统计（待审草稿 / 正式技能 / 账本快照 / 最近心跳）与审阅入口](assets/screenshots/workbench.png)
+
+---
+
 ## 它做什么
 
 1. **回合后自动复盘** — 监听 `turn/end` 与 `session/flush`，识别 `user-correction`、`new-technique`、`skill-was-wrong` 三类信号；按 `minTurnsBetween` 回合 / `minMinutesBetween` 分钟双重节流（`.throttle.json` 跨进程持久化），快照有界（`maxMessages` 条、`maxChars` 字符）。

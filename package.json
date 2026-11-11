@@ -49,7 +49,9 @@
     "README.md",
     "README.en.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "screenshots.json",
+    "assets/screenshots/*.png"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",

@@ -12,6 +12,12 @@
 
 ---
 
+## Screenshots
+
+![The workbench overview: pending drafts, promoted skills, ledger snapshots and last heartbeat, with the review entry points](assets/screenshots/workbench.png)
+
+---
+
 ## What it does
 
 1. **Post-turn review** — listens on `turn/end` and `session/flush`, detects `user-correction`, `new-technique` and `skill-was-wrong` signals, throttles by `minTurnsBetween` turns / `minMinutesBetween` minutes (`.throttle.json`, cross-process), and bounds the snapshot by `maxMessages` and `maxChars`.

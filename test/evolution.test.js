@@ -1,5 +1,5 @@
 /**
- * @local/dsh-evolution 单元测试
+ * skill-evolution 单元测试
  *
  * 不依赖 DSH 运行时，纯 Node 跑：node --test
  */

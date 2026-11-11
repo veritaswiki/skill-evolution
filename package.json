@@ -1,8 +1,8 @@
 {
   "name": "skill-evolution",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
-  "description": "Closed-loop skill self-evolution engine: post-turn review, Chinese briefing & mandatory directive fusion, 4-gate safety validation, SHA-256 content-addressed ledger with single-entry rollback, LLM umbrella consolidation, and full Web/Mobile/Remote workbench.",
+  "description": "Closed-loop skill self-evolution plugin for DSH: post-turn review, Chinese briefing & mandatory directive fusion, 4-gate safety validation, SHA-256 content-addressed ledger with single-entry rollback, LLM umbrella consolidation, and a Web/Mobile/Remote review workbench.",
   "license": "MIT",
   "author": {
     "name": "veritaswiki",
@@ -45,13 +45,27 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
+    "assets/icon-180.png",
     "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",
     "audit:parity": "node tools/verify-parity.mjs",
-    "audit:prompts": "node tools/verify-prompt-fidelity.mjs"
+    "audit:prompts": "node tools/verify-prompt-fidelity.mjs",
+    "sanitize": "node scripts/sanitize-check.mjs"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.0.0-0"
   },
   "dsh": {
     "bundle": {
@@ -61,6 +75,8 @@
       "platform": "web",
       "immediately": true,
       "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-session",
         "@deepseek-ai/dsh-client-ui-workspace",

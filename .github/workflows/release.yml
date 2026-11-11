@@ -27,6 +27,7 @@ jobs:
           node --test test/*.test.js
           node tools/verify-parity.mjs
           node tools/verify-prompt-fidelity.mjs
+          node scripts/sanitize-check.mjs
 
       - name: Pack version-free release tarball (skill-evolution.tgz)
         run: |

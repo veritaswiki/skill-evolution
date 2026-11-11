@@ -1,11 +1,11 @@
 /**
- * DSH 自进化（@local/dsh-evolution）
+ * DSH 自进化（skill-evolution）
  *
  * 让 DSH 拥有 Hermes 的 closed learning loop：
  *   回合结束 → 采集快照 → fork 只读复盘 → 蒸馏成技能 → 闸门校验 → 落盘草稿 → 记账
  *
  * 设计原则：
- *   1. 不侵入 DSH 内核 —— 纯 @local 插件
+ *   1. 不侵入 DSH 内核 —— 纯插件，不改宿主
  *   2. 复用而非重造 —— 技能格式/注册表/热更新全部复用 DSH 现有能力
  *   3. 默认保守 —— 只产草稿到 .staging/，不自动落盘
  *   4. 可回滚 —— 每次变更记账，支持单条回滚
@@ -52,12 +52,12 @@ export const Config = z.object({
 
   reviewModel: z
     .object({
-      provider: z.string().default("magpie"),
-      model: z.string().default("seoul/auto/deepseek-v4.1-flash"),
+      provider: z.string().default(""),
+      model: z.string().default(""),
       reasoningEffort: z.string().default(""),
     })
     .default({ provider: "", model: "", reasoningEffort: "" })
-    .description("复盘专用模型；默认使用高速轻量的辅助模型避免消耗主模型配额"),
+    .description("复盘专用模型；留空继承当前会话模型，也可指定更便宜的辅助模型"),
 
   curatorEnabled: z.boolean().default(true).description("是否启用技能生命周期维护（active/stale/archived）"),
   consolidate: z.boolean().default(false).description("是否启用 LLM 建伞合并（把多个窄技能合并成类级别伞技能）"),

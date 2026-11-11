@@ -1,185 +1,202 @@
 # 🧬 Skill Evolution (`skill-evolution`)
 
 [![CI](https://github.com/veritaswiki/skill-evolution/actions/workflows/ci.yml/badge.svg)](https://github.com/veritaswiki/skill-evolution/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](./LICENSE)
-[![Tests: 61 Passed](https://img.shields.io/badge/tests-61%20passed-34d399.svg)](#测试与保真度审计)
-[![Hermes Parity: 41/41](https://img.shields.io/badge/Hermes%20Parity-41%2F41-8b7cf6.svg)](#能力对齐矩阵4141)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Node](https://img.shields.io/badge/Node-%3E%3D20.11-informational.svg)](#开发)
+[![Tests](https://img.shields.io/badge/tests-70%20passed-34d399.svg)](#开发)
+[![Hermes parity](https://img.shields.io/badge/Hermes%20parity-41%2F41-8b7cf6.svg)](#能力对齐与审计)
 
-**Skill Evolution** 是一套面向 AI Coding Agent 的**闭环程序性记忆自进化引擎（Closed-Loop Procedural Memory & Self-Evolution Engine）**。
+> DSH 的 `skill` 工具只能加载技能，不能写回技能。这个插件补上写回的那一段：回合结束后自动复盘会话、把经验蒸馏成技能草稿、过四道代码级闸门后等你批示，全程记账、可单条回滚。
 
-它完整移植并强化了 Nous Research `hermes-agent` 的 **Closed Learning Loop**：在每次有效会话回合结束后，自动采集有界轨迹快照、在只读沙箱中蒸馏可复用的类级别技能（`SKILL.md`）、生成**大白话中文审阅简报**、通过**强制人工批示与 AI 二次融合**完成经验沉淀，并提供**四道安全闸门**、**SHA-256 内容寻址账本（支持单条原子回滚）**、**Curator 生命周期维护与 LLM 建伞合并（Umbrella Consolidation）**，以及适配桌面端、手机端与远程客户端的全功能可视化工作台。
-
-[English Documentation (README.en.md)](./README.en.md)
-
----
-
-## ✨ 核心特性
-
-- 🔄 **六步闭环自进化流水线（Closed Learning Loop）**
-  - `回合结束监听 (turn/end & session/flush)` → `有界快照采集 (Collector)` → `只读复盘蒸馏 (Reflector)` → `四道安全闸门 (Gatekeeper)` → `中文简报与强制批示融合 (ReviewBrief)` → `SHA-256 账本与热更新落盘 (Applier & Ledger)`。
-- 📋 **中文审阅简报 + 强制批示 + AI 二次融合（Human-in-the-Loop Directive Fusion）**
-  - 打开待审草稿时，首先展示结构化**中文审阅简报**：用大白话讲清楚**「这是什么技能」**、**「核心提炼出的铁律」**、**「同意采纳会如何」**、**「不同意驳回会如何」**；
-  - **强制填写批示**：必须填写您的审阅批示/想法（支持一键快捷批示胶囊）后才解锁操作按钮；
-  - **AI 批示融合进化**：支持点击「AI 按批示修订草稿（先看效果）」或「按批示进化并采纳进正式库」，AI 会先阅读您的批示重写技能正文并给出中文修订汇报，再升入正式技能库。
-- 🛡️ **四道代码级安全硬闸门（4-Stage Hard Gatekeeper）**
-  - 将提示词软约束升级为不可绕过的代码级正则与结构拦截：
-    1. **Frontmatter 结构校验**：强制校验 `name`（kebab-case）与非空 `description`；
-    2. **类级别命名校验（Class-Level Naming）**：硬性拒绝 `fix-xxx`、`debug-yyy`、PR 号、日期戳等一次性会话产物命名；
-    3. **负面断言与环境错误硬拦截（Forbidden Content Scan）**：拦截 `"X tool does not work"`、`"command not found"` 等一旦写入就会让 Agent 自我设限数月的负面断言；
-    4. **体积预算与归属保护（Provenance & Size Cap）**：限制单技能正文 `<= 24,000` 字符（引导拆分 `references/`），且严格校验 `metadata.createdBy === "agent"`，**绝不自动篡改用户手写技能**。
-- ☂️ **Curator 技能生命周期与 LLM 建伞合并（Umbrella Consolidation）**
-  - 旁路遥测 `.usage.json`（不污染 `SKILL.md`），自动执行 `active → stale (14d) → archived (30d)` 状态转换（遵循 `useCount === 0` 零使用不归档、`pinned` 豁免、内置技能受保护、**只归档永不删除**四大不变量）；
-  - 内置 **LLM 建伞合并工作台**：自动扫描前缀聚类，将多个零散窄技能蒸馏合并为类级别伞技能，支持 `Dry-Run` 计划预览与一键确认执行。
-- 🧾 **SHA-256 内容寻址账本与 Fail-Closed 单条回滚（Skill Ledger）**
-  - 每次创建、补丁、批示修订、采纳、合并或归档均在 `.evolution_ledger.jsonl` 记录前后文件清单，文件内容按 SHA-256 去重存入 `.evolution_backups/blobs/`；
-  - UI 内置**文件级 SHA-256 结构化 Diff 表格**，支持任意历史记录一键原子回滚（当安全快照捕获失败时严格 Fail-Closed）。
-- 💻📱 **全端原生适配（Desktop Web GUI + 手机端独立 PWA + 远程客户端原生卡片）**
-  - **桌面端顶部视图栏**：直接挂载于会话顶部导航栏（「对话 · 轨迹 · 上下文 · 编队 · 专家团 · **自进化**」）与「设置 → 自进化」；
-  - **移动端独立触屏工作台**：内置固定端口 `18890`（及 `/dsh-evolution/mobile` 路由），支持底部 Tab 栏、iOS `16px` 防自动缩放与大尺寸触控热区；
-  - **远程客户端（Remote / Mobile App）原生交互**：内置 `evolution_review_center` 工具（弹出原生 `ask_user_question` 审批卡片）与 `/evolution` 斜杠命令。
+[English Documentation (README.en.md)](./README.en.md) · [变更日志 (CHANGELOG.md)](./CHANGELOG.md)
 
 ---
 
-## 🏗️ 架构与数据流
+## 它做什么
 
-```text
-会话回合结束 (turn/end) + 短生命周期退出屏障 (session/flush)
-   │
-   ▼
-[1. Collector 采集器]   lib/collector.js
-   │  · 自动剥离系统注入块 (<system-reminder> / runtime context)
-   │  · 信号识别：user-correction / new-technique (≥3次或≥2种工具) / skill-was-wrong
-   │  · 跨进程持久化节流 (.throttle.json) + 历史摘要压缩 (_digest_history)
-   ▼
-[2. Reflector 复盘器]   lib/reflector.js + lib/prompts.js
-   │  · 逐字移植 Hermes 三段审查宪法 (SKILL_REVIEW / LESSON_LAYER / DO_NOT_CAPTURE)
-   │  · 输出结构化 JSON + 中文审阅简报 (.briefing.json)
-   ▼
-[3. Synthesizer & Gatekeeper 四道闸门]   lib/synthesizer.js + lib/gatekeeper.js
-   │  · 类级别命名校验 · 负面断言/环境错误硬拦截 · 24k 长度上限 · Provenance 归属检查
-   ▼
-[4. 中文简报与强制批示中心]   client.js + lib/http-api.js
-   │  · 展示「这是什么 / 核心铁律 / 同意后果 / 驳回后果」
-   │  · 强制填写用户批示 -> AI 融合批示二次修订 (/refine-draft) -> 正式采纳 (/promote)
-   ▼
-[5. Ledger 账本 & Curator 建伞]   lib/ledger.js + lib/usage.js + lib/consolidation.js
-   │  · .evolution_ledger.jsonl + SHA-256 blobs + 单条回滚
-   └  · .usage.json 遥测 + active/stale/archived + LLM 建伞合并 (CURATOR_REVIEW_PROMPT)
-```
+1. **回合后自动复盘** — 监听 `turn/end` 与 `session/flush`，识别 `user-correction`、`new-technique`、`skill-was-wrong` 三类信号；按 `minTurnsBetween` 回合 / `minMinutesBetween` 分钟双重节流（`.throttle.json` 跨进程持久化），快照有界（`maxMessages` 条、`maxChars` 字符）。
+2. **复盘是只读的** — 复盘跑在宿主 subagent fork（`subagents.startActivation`，工具白名单 `skill` / `glob` / `grep` / `read`）或一个 OpenAI-compatible 辅助端点；两条通道都不写文件，写入由插件在闸门之后自己做，且新回合到来会打断上一次复盘、单次有超时。
+3. **默认只产草稿** — `mode: draft` 时产物只写 `<skillsRoot>/.staging/`，正式技能库零改动；采纳后由 `promote` 落进正式技能目录，靠 DSH 技能文件系统的热更新自动生效。
+4. **四道代码级闸门 + 归属保护** — 见下方闸门表；只有 `metadata.createdBy: agent` 的技能会被自动改写，用户手写技能一律不碰。
+5. **账本与单条回滚** — 每次创建 / 补丁 / 批示修订 / 采纳 / 合并 / 归档都追加一条 `.evolution_ledger.jsonl`，文件内容按 SHA-256 去重存进 `.evolution_backups/blobs/`；回滚前先做安全捕获，捕获失败就拒绝回滚（fail-closed）。
+6. **生命周期与建伞合并** — `.usage.json` 旁路遥测驱动 `active → stale(14d) → archived(30d)`（零使用不归档、`pinned` 豁免、内置技能受保护、只移动不删除）；另有 LLM 建伞合并把多个窄技能并成类级别伞技能，默认只预览不执行。
 
 ---
 
-## 🚀 安装与快速上手
+## 它怎么做
 
-### 1. 通过插件管理器安装
+### 流水线模块
 
-从 npm 或 GitHub 仓库直接安装到当前 Profile：
+| 环节 | 文件 | 做什么 |
+|---|---|---|
+| 采集 | `lib/collector.js` | 剥离系统注入块，识别复盘信号，节流，压缩历史为摘要，裁剪到 `maxChars` |
+| 复盘 | `lib/reflector.js` + `lib/prompts.js` | fork 只读复盘或调辅助端点；提示词逐字取自 Hermes（见 `vendor/hermes/`） |
+| 蒸馏 | `lib/synthesizer.js` | 结构化 JSON → `SKILL.md` 内容（纯函数） |
+| 闸门 | `lib/gatekeeper.js` | 四道静态检查，见下表 |
+| 落盘 | `lib/applier.js` | draft/apply 两种落盘位置，归属保护，提升草稿 |
+| 记账 | `lib/ledger.js` | JSONL 账本、SHA-256 blob、单条回滚、轮转与 blob GC |
+| 生命周期 | `lib/usage.js` | `.usage.json` 遥测、三态转换、pinned/保护技能、adopt/disown |
+| 建伞合并 | `lib/consolidation.js` | 前缀聚类 + LLM 计划校验（原子性：一条不合规整批拒绝） |
+| 展示 | `client.js` + `lib/http-api.js` | Web 工作台与 `/dsh-evolution/api/*` |
+
+### 四道闸门（`lib/gatekeeper.js`）
+
+| # | 检查 | 拒绝什么 |
+|---|---|---|
+| 1 | 命名 | 非 kebab-case、超 64 字符、`fix-X` / `debug-Y` / PR 号 / 日期戳这类一次性会话产物、裸库名 |
+| 2 | Frontmatter | 缺 `description`；`description` 超 80 字符；`frontmatter.name` 与目标名不一致 |
+| 3 | 禁词扫描 | 负面断言（`X tool does not work`）、环境失败（`command not found`）、一次性叙事 |
+| 4 | 体积与路径 | 正文超 24000 字符；`add_reference` 的路径不是 `references/<topic>.md` 或带日期戳 |
+
+### 前端挂载点（`client.js`）
+
+| 插槽 | order | 内容 |
+|---|---|---|
+| `main` | — | 完整工作台：概览 / 待审草稿 / 技能库 / 账本 / 参数五个视图 |
+| `sidebar.panellist` | 15 | 侧栏入口 |
+| `settings.section` | 30 | 只放引擎参数与状态，不放审阅工作台 |
+| `settings.section.icon` | — | 设置段图标 |
+
+界面样式只取宿主 `--dsw-alias-*` token 跟随明暗主题（720px 容器、20/14/12 号字阶梯、`.5px` 行分割线、36×20 原生开关）。
+
+### HTTP API（`lib/http-api.js`）
+
+前缀 `/dsh-evolution`，`GET /dsh-evolution/mobile` 返回独立手机端页面。
+
+| 方法 | 路径 | 作用 |
+|---|---|---|
+| GET | `/dsh-evolution/api/status` | 完整状态（技能数、草稿含正文与中文简报、账本、最近复盘、节流、配置） |
+| GET | `/dsh-evolution/api/skills` | 技能列表（生命周期状态、使用次数、是否 agent 创建） |
+| GET | `/dsh-evolution/api/drafts` | 待审草稿（含完整 `SKILL.md` 与 `briefing`） |
+| GET | `/dsh-evolution/api/skill/:name` | 单个技能详情 |
+| GET | `/dsh-evolution/api/ledger` | 账本记录（`?limit=`） |
+| GET | `/dsh-evolution/api/ledger/:id` | 单条账本（含前后文件 SHA 清单） |
+| GET | `/dsh-evolution/api/candidates` | 可参与建伞合并的候选技能 |
+| POST | `/dsh-evolution/api/refine-draft` | 按批示让 AI 重写草稿并更新简报 |
+| POST | `/dsh-evolution/api/promote` | 采纳草稿（可先融合批示） |
+| POST | `/dsh-evolution/api/promote-batch` | 原子批量采纳 |
+| POST | `/dsh-evolution/api/discard` | 驳回草稿 |
+| POST | `/dsh-evolution/api/tidy` | 待审积压一键分诊 |
+| POST | `/dsh-evolution/api/rollback` | 按账本 `id` 回滚 |
+| POST | `/dsh-evolution/api/pin` | 固定 / 取消固定 |
+| POST | `/dsh-evolution/api/adopt` · `/disown` | 纳入 / 取消纳管 |
+| POST | `/dsh-evolution/api/consolidate` | 建伞合并（`dryRun: true` 预览） |
+| POST | `/dsh-evolution/api/config` | 保存配置 |
+| POST | `/dsh-evolution/api/review` | 手动触发一次复盘 |
+
+---
+
+## 安装
+
+**方式 A：插件管理器**
 
 ```bash
-# 从 GitHub 仓库安装
+# 装进指定 profile（等价于在该 profile 目录执行 pnpm add）
 dsh plugin add github:veritaswiki/skill-evolution
+```
 
-# 或从本地克隆目录安装
+然后把包名加入该 profile 的 `dsh.profile.bundles`，重启 DSH。插件自己的 `cordis.patch.yml` 会带上默认配置（把 DSH 技能目录描述上限从 500 收到 80 字符，并对本插件 `insert` 一份配置）。
+
+**方式 B：配置文件**
+
+不装 bundle，直接在 `~/.dsh/cordis.patch.yml` 写：
+
+```yaml
+- id: tool-skill
+  config:
+    catalogDescriptionMaxLength: 80
+- insert:
+    - id: skill-evolution
+      name: 'skill-evolution'
+      config:
+        enabled: true
+        mode: draft
+```
+
+**方式 C：源码**
+
+```bash
 git clone https://github.com/veritaswiki/skill-evolution.git
 dsh plugin add ./skill-evolution
 ```
 
-### 2. 三种使用入口
-
-1. **桌面端 Web GUI**：
-   - 打开任意会话顶部视图栏，点击 **「自进化」** 标签页（位于「专家团」旁）；
-   - 或打开左下角 **「设置 (Settings) → 自进化」**。
-2. **手机端 / 远程连接（Remote App）**：
-   - **自然语言卡片审批**：直接在聊天框发送 `审阅自进化草稿` 或 `看看自进化待审稿`，AI 会调用 `evolution_review_center` 弹出原生交互卡片；
-   - **斜杠命令秒查秒批**：
-     ```text
-     /evolution brief                              # 查看所有待审草稿的中文简报
-     /evolution refine <skill-name> <您的批示想法>    # 让 AI 按批示修订草稿并汇报分析
-     /evolution approve <skill-name> <您的批示想法>   # AI 融合批示后升入正式技能库
-     /evolution reject <skill-name> <您的驳回理由>    # 按批示驳回并记入账本
-     /evolution consolidate                        # 预览 LLM 建伞合并计划 (dry-run)
-     /evolution consolidate --apply                # 执行 LLM 建伞合并
-     /evolution ledger                             # 查看最近 SHA-256 账本记录
-     /evolution rollback <entry-id>                # 原子回滚指定账本记录
-     ```
-   - **独立手机触屏网页台**：浏览器或远程端口预览访问 `http://127.0.0.1:18890/dsh-evolution/mobile`。
+装好之后，`/evolution status` 应能看到技能根目录、模式、技能数、待审草稿数与账本条数。
 
 ---
 
-## ⚙️ 配置项说明 (`cordis.patch.yml`)
+## 配置
 
-| 配置项 | 默认值 | 说明 |
-|---|---|---|
-| `enabled` | `true` | 是否启用回合后自动复盘采集 |
-| `mode` | `"draft"` | `"draft"`：只写 `.staging/` 草稿等人工批示采纳（推荐）；`"apply"`：通过闸门后自动落盘 |
-| `skillsRoot` | `""` | 技能根目录（留空默认使用 `~/.dsh/skills`） |
-| `minTurnsBetween` | `3` | 两次自动复盘之间至少间隔多少个有效回合（跨进程持久化） |
-| `minMinutesBetween` | `5` | 两次自动复盘之间至少间隔多少分钟 |
-| `maxMessages` | `24` | 快照保留的最近原文消息条数（更早轮次自动折叠为摘要） |
-| `maxChars` | `24000` | 单次复盘快照的最大字符预算 |
-| `reviewTimeoutSeconds` | `180` | 单次后台复盘超时时间（秒） |
-| `curatorEnabled` | `true` | 是否启用技能生命周期维护（`active` / `stale` / `archived`） |
-| `consolidate` | `false` | 是否在定时 Curator 中自动运行 LLM 建伞合并 |
-| `consolidateDryRun` | `true` | 建伞合并默认仅输出预览计划而不直接改动磁盘 |
-| `staleAfterDays` | `14` | 多少天未使用标记为 `stale` |
-| `archiveAfterDays` | `30` | 多少天未使用移入 `.archive/`（永不删除） |
+`cordis.patch.yml` 里的默认值与 `index.js` 的 Schemastery 定义一致：
 
----
+| 键 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `enabled` | boolean | `true` | 是否启用回合后自动复盘 |
+| `skillsRoot` | string | `""`（→ `~/.dsh/skills`） | 技能根目录；草稿、账本、遥测都放这里 |
+| `mode` | `"draft" \| "apply"` | `"draft"` | `draft` 只写 `.staging/`；`apply` 过闸后直接落盘 |
+| `minTurnsBetween` | number | `1` | 两次复盘之间至少间隔多少个可复盘回合 |
+| `minMinutesBetween` | number | `2` | 两次复盘之间至少间隔多少分钟 |
+| `maxMessages` | number | `24` | 快照保留的最近消息条数 |
+| `maxChars` | number | `24000` | 单次复盘快照字符上限 |
+| `reviewTimeoutSeconds` | number | `180` | 单次复盘超时 |
+| `reviewModel.provider` | string | `""` | 复盘专用模型 provider；留空继承当前会话模型 |
+| `reviewModel.model` | string | `""` | 复盘专用模型名；留空继承当前会话模型 |
+| `reviewModel.reasoningEffort` | string | `""` | 透传给宿主的 reasoning effort |
+| `curatorEnabled` | boolean | `true` | 是否启用生命周期维护 |
+| `consolidate` | boolean | `false` | 定时 curator 是否自动跑建伞合并 |
+| `consolidateDryRun` | boolean | `true` | 建伞合并只出计划、不改盘 |
+| `staleAfterDays` | number | `14` | 多少天未使用标记 `stale` |
+| `archiveAfterDays` | number | `30` | 多少天未使用移入 `.archive/`（不删除） |
 
-## 🔌 HTTP API 路由表 (`/dsh-evolution/api/*`)
+环境变量（全部可选）：
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| `GET` | `/dsh-evolution/mobile` | 独立手机端 PWA 触屏审批台页面 |
-| `GET` | `/dsh-evolution/api/status` | 完整状态快照（统计、配置、带全文与中文简报的草稿、技能列表、SHA 账本、最近复盘状态） |
-| `GET` | `/dsh-evolution/api/drafts` | 待审草稿列表（含 `body`、`frontmatter`、`resources`、`briefing`） |
-| `GET` | `/dsh-evolution/api/skills` | 正式技能列表 |
-| `GET` | `/dsh-evolution/api/skill/:name` | 单个正式技能详情 |
-| `GET` | `/dsh-evolution/api/ledger` | 账本历史记录列表 |
-| `GET` | `/dsh-evolution/api/ledger/:id` | 单条账本详情（含 `before` / `after` 文件 SHA 清单） |
-| `GET` | `/dsh-evolution/api/candidates` | 可参与 LLM 建伞合并的候选技能列表 |
-| `POST` | `/dsh-evolution/api/refine-draft` | 根据用户强制批示（`comment`）调用 AI 重写草稿并更新中文简报 |
-| `POST` | `/dsh-evolution/api/promote` | 带用户批示采纳草稿至正式技能库（支持 `evolveWithComment: true`） |
-| `POST` | `/dsh-evolution/api/discard` | 带用户批示驳回并销毁草稿 |
-| `POST` | `/dsh-evolution/api/rollback` | 按账本 `id` 原子回滚技能变更 |
-| `POST` | `/dsh-evolution/api/pin` | 固定 / 取消固定技能（豁免自动归档与合并） |
-| `POST` | `/dsh-evolution/api/adopt` | 将外部/手写无标记技能纳入生命周期管理 |
-| `POST` | `/dsh-evolution/api/disown` | 取消纳管技能 |
-| `POST` | `/dsh-evolution/api/consolidate` | 执行 LLM 建伞合并（`dryRun: true` 预览 / `dryRun: false` 执行） |
-| `POST` | `/dsh-evolution/api/review` | 手动触发当前活跃会话复盘 |
-| `POST` | `/dsh-evolution/api/config` | 实时保存并持久化引擎配置 |
+| 变量 | 作用 |
+|---|---|
+| `DSH_EVOLUTION_BASE_URL` | OpenAI-compatible 辅助端点（如 `https://host/v1`）。不设则复盘走宿主 subagent fork |
+| `DSH_EVOLUTION_API_KEY` | 辅助端点的 Bearer token |
+| `DSH_EVOLUTION_MODEL` | 辅助端点使用的模型名 |
+| `DSH_EVOLUTION_PORT` | 独立手机端服务的固定端口，默认 `18890` |
+| `DSH_HOME` | DSH 主目录，默认 `~/.dsh` |
+
+### 命令与工具
+
+`/evolution` 子命令：`brief [name]` / `drafts`、`refine <name> <批示>`、`approve <name> <批示>`（`promote` 同义，同样必须带批示）、`reject <name> <批示>`（`discard` 同义）、`ledger`、`skills`、`adopt <name>`、`disown <name>`、`rollback <id>`、`review`、`consolidate [--apply]`、`status`（默认）。
+
+`evolution_review_center` 工具面向聊天端 / 手机端：`action` 取 `brief`、`interactive_review`（默认）、`refine`、`approve`、`reject`。
 
 ---
 
-## 📊 能力对齐矩阵（41/41）
+## 已知限制
 
-运行 `npm run audit:parity` 可随时验证与 Nous Research `hermes-agent` 的逐项对齐状态：
-
-- **复盘引擎（4/4）**：回合后异步复盘、只读工具白名单、新回合自动打断取消、历史摘要压缩；
-- **审查宪法（9/9）**：三段审查提示词逐字移植、`Be ACTIVE` 反惰性、类级别技能形态、四级更新优先级、`Read-before-write`、用户偏好嵌入、负面断言禁令、环境失败禁令、未解决失败禁令；
-- **账本与安全（6/6）**：技能落盘、JSONL 账本、SHA-256 内容寻址 blob 去重、单条回滚、回滚 Fail-Closed、账本轮转与 blob GC；
-- **生命周期与建伞合并（13/13）**：旁路 `.usage.json`、`active/stale/archived` 三态、零使用不归档、`pinned` 豁免、内置技能保护、只归档不删除、Provenance 写来源溯源、用户手写技能保护、LLM 建伞合并、前缀聚类、三种合并方式、包完整性检查、`absorbedInto` 强制校验、`adopt/disown`；
-- **增强能力（5+）**：`session/flush` 短生命周期进程退出屏障、中文审阅简报 + 强制批示 AI 融合、代码级禁词硬拦截、全功能桌面/移动端可视化工作台、原生交互卡片工具 `evolution_review_center`。
+- **辅助通道需要你自己配**：不带任何网关地址或凭据。不设 `DSH_EVOLUTION_BASE_URL` 时复盘走宿主 subagent fork，走不了低延迟辅助模型那条路。
+- **闸门挡不住「没价值」**：四道闸门只做静态检查（命名、frontmatter、禁词、体积），「这条经验值不值得记」仍由模型判断，草稿需要人看。
+- **界面只有中文**：`locale/en.json` 只覆盖插件名与描述，工作台没有英文 UI。
+- **交互卡片依赖宿主**：`evolution_review_center` 的卡片走宿主 `userQuestions` 服务；宿主没有这个服务时退化为返回中文简报文本，需要用户直接回复批示。
+- **本地 HTTP 无鉴权**：固定端口服务绑 `0.0.0.0:18890`，供本机或可信网络使用；端口被占用时静默跳过。
+- **`mode: apply` 会直接改正式技能库**：只对 `metadata.createdBy: agent` 的技能生效，默认仍是 `draft`。
+- **归档不释放磁盘**：移进 `.archive/`，要回收得自己删。
+- **正文上限 24000 字符**：超了必须拆到 `references/`。
 
 ---
 
-## 🧪 测试与保真度审计
-
-本项目零外部测试框架依赖，使用 Node.js 原生测试运行器：
+## 开发
 
 ```bash
-# 运行全部 61 个单元测试
-npm test
-
-# 运行 41 项能力对齐审计
-npm run audit:parity
-
-# 运行 Hermes 提示词逐字节保真度审计
-npm run audit:prompts
+npm test                # 70 个单元测试（node --test test/*.test.js）
+npm run audit:parity    # 41 项能力对齐审计（37 项 Hermes 能力 + 4 项 DSH 独有）
+npm run audit:prompts   # 两段提示词逐字节保真度（LESSON_LAYER_BLOCK / _DO_NOT_CAPTURE_BLOCK）
+npm run sanitize        # 脱敏门禁，0 命中才通过
 ```
+
+需要 Node ≥ 20.11（`tools/*.mjs` 用 `import.meta.dirname`）。CI 会跑语法检查、70 个测试、两道审计和脱敏门禁。
+
+### 能力对齐与审计
+
+`npm run audit:parity` 逐项核对 Hermes 能力是否落地，并列出 4 项 DSH 独有能力；`npm run audit:prompts` 把 `lib/prompts.js` 里的两段提示词与 `vendor/hermes/background_review.py` 的原文逐字节比对（当前 2098 / 1690 字符全等）。
+
+`vendor/hermes/` 是 Nous Research `hermes-agent` 的逐字副本（MIT），见 [`vendor/hermes/PROVENANCE.md`](./vendor/hermes/PROVENANCE.md)。
 
 ---
 
-## 📄 开源许可 (License)
+## License
 
-本项目基于 [MIT License](./LICENSE) 开源。其中 `vendor/hermes/` 目录下的参考源码引自 Nous Research `hermes-agent`（同样遵循 MIT 许可，详见 [`vendor/hermes/PROVENANCE.md`](./vendor/hermes/PROVENANCE.md)）。
+[MIT](./LICENSE)。`vendor/hermes/` 下的参考源码来自 Nous Research `hermes-agent`，同样遵循 MIT。

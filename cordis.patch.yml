@@ -1,4 +1,4 @@
-# DSH 自进化（@local/dsh-evolution）
+# DSH 自进化（skill-evolution）
 #
 # 让 DSH 拥有 Hermes 的 closed learning loop：
 #   回合结束 → 采集快照 → fork 只读复盘 → 蒸馏成技能 → 闸门校验 → 落盘草稿 → 记账
@@ -6,7 +6,7 @@
 # 默认启用：装上即开始工作，但只产草稿（见下方 mode），不会自动改写技能库。
 #
 # ⚠️ 默认 mode: draft —— 只写 ~/.dsh/skills/.staging/ 等人工审阅，
-#    绝不自动改写正式技能库。确认草稿质量后可用 /evolution promote <name> 提升。
+#    绝不自动改写正式技能库。确认草稿质量后可用 /evolution approve <name> <批示> 提升。
 # 对齐 Hermes SKILL_PROMPT_DESC_LIMIT：将 DSH 全局技能目录描述上限从 500 收紧至 80 字符，防止目录膨胀
 - id: tool-skill
   config:
@@ -19,9 +19,9 @@
         mode: draft
         # 技能根目录留空 = ~/.dsh/skills
         skillsRoot: ''
-        # 节流：两次复盘之间至少 3 个值得复盘的回合 + 5 分钟
-        minTurnsBetween: 3
-        minMinutesBetween: 5
+        # 节流：两次复盘之间至少 1 个值得复盘的回合 + 2 分钟
+        minTurnsBetween: 1
+        minMinutesBetween: 2
         # 快照预算
         maxMessages: 24
         maxChars: 24000
@@ -34,5 +34,8 @@
           reasoningEffort: ''
         # 技能生命周期维护
         curatorEnabled: true
+        # LLM 建伞合并：默认只分析预览，不直接改盘
+        consolidate: false
+        consolidateDryRun: true
         staleAfterDays: 14
         archiveAfterDays: 30

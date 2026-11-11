@@ -1,10 +1,11 @@
-// DSH 自进化 · Web GUI 客户端（歸藏瑞士国际主义极简设计系统 · Guizang Swiss International Style）
+// DSH 自进化 · Web GUI 客户端（对齐 DSH 原生设置页设计语言）
 //
-// 设计语言对齐 dsh-guizang-design (gz-swiss.css + gallery/style.css)：
-//   - 零圆角直角建筑感 (border-radius: 0)、1px 共享细线网格、暖白纸色 (--paper: #fafaf8) 与深墨 (--ink: #0a0a0a)
-//   - 克莱因蓝锚点色 (--accent: #002FA7 / 暗色 #5B7BFF) + 歸藏四色几何印记
-//   - 左侧 208px 极简导航栏 + 右侧留白画布，渐进式展开（Progressive Disclosure），零视觉噪音，100% 保留全部功能
-//   - 挂载位置：sidebar.panellist (order: 15，位于上下文洞察上方) + main + settings.section
+// 视觉规范：
+//   - 页面容器 max-width 720px，标题 20/500，正文 14/20，说明 12/18 secondary
+//   - 设置行 padding 16px 0 + .5px 分割线，末行去边框；按钮为透明底 + .5px 描边 + 6px 圆角
+//   - 颜色一律取自宿主 --dsw-alias-* token（跟随明暗主题），无自定义字体族与硬编码颜色
+//   - 开关 36×20、role="switch" + aria-checked，与宿主内置开关一致
+//   - 挂载位置：sidebar.panellist (order: 15) + main（完整工作台）+ settings.section（引擎参数）
 
 window.__ModuleLoader__.load({
   id: 'skill-evolution',
@@ -97,9 +98,9 @@ window.__ModuleLoader__.load({
           viewBox: '0 0 24 24',
           fill: 'none',
           stroke: 'currentColor',
-          strokeWidth: 1.6,
-          strokeLinecap: 'square',
-          strokeLinejoin: 'miter',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
           style: { flexShrink: 0 },
         },
         ...(Array.isArray(d) ? d : [d]).map((p, i) => h('path', { key: i, d: p })),
@@ -120,18 +121,33 @@ window.__ModuleLoader__.load({
     };
 
     // ---------- 3. 顶层受控表单组件（防重渲染失焦）----------
-    function SettingField({ label, mono, hint, children }) {
+    function SettingField({ label, hint, children }) {
       return h(
         'div',
-        { className: 'gz-field' },
+        { className: 'evo-field' },
         h(
           'div',
-          { className: 'gz-field-head' },
-          h('span', { className: 'gz-field-label' }, label),
-          mono ? h('span', { className: 'gz-mono gz-muted' }, mono) : null,
+          { className: 'evo-field-main' },
+          h('div', { className: 'evo-field-label' }, label),
+          hint ? h('div', { className: 'evo-field-hint' }, hint) : null,
         ),
-        children,
-        hint ? h('div', { className: 'gz-field-hint' }, hint) : null,
+        h('div', { className: 'evo-field-control' }, children),
+      );
+    }
+
+    function NativeSwitch({ checked, disabled, label, onChange }) {
+      return h(
+        'button',
+        {
+          type: 'button',
+          role: 'switch',
+          'aria-checked': checked ? 'true' : 'false',
+          'aria-label': label,
+          className: 'evo-switch',
+          disabled,
+          onClick: () => onChange(!checked),
+        },
+        h('span', { className: 'evo-thumb', 'aria-hidden': 'true' }),
       );
     }
 
@@ -142,7 +158,7 @@ window.__ModuleLoader__.load({
       }, [value]);
       return h('input', {
         type: 'number',
-        className: 'gz-input',
+        className: 'evo-input evo-input-num',
         min,
         max,
         step,
@@ -169,15 +185,15 @@ window.__ModuleLoader__.load({
       const lines = String(body || '').split('\n');
       return h(
         'div',
-        { className: 'gz-code-box' },
+        { className: 'evo-code-box' },
         frontmatter && Object.keys(frontmatter).length
           ? h(
               'div',
-              { className: 'gz-code-fm' },
+              { className: 'evo-code-fm' },
               Object.entries(frontmatter).map(([k, v]) =>
                 h(
                   'span',
-                  { key: k, className: 'gz-code-fm-item' },
+                  { key: k, className: 'evo-code-fm-item' },
                   h('strong', null, `${k}: `),
                   typeof v === 'object' ? JSON.stringify(v) : String(v),
                 ),
@@ -186,13 +202,13 @@ window.__ModuleLoader__.load({
           : null,
         h(
           'pre',
-          { className: 'gz-code-pre' },
+          { className: 'evo-code-pre' },
           lines.map((line, i) =>
             h(
               'div',
-              { key: i, className: 'gz-code-line' },
-              h('span', { className: 'gz-code-num' }, String(i + 1).padStart(2, '0')),
-              h('span', { className: 'gz-code-txt' }, line || ' '),
+              { key: i, className: 'evo-code-line' },
+              h('span', { className: 'evo-code-num' }, String(i + 1).padStart(2, '0')),
+              h('span', { className: 'evo-code-txt' }, line || ' '),
             ),
           ),
         ),
@@ -203,22 +219,22 @@ window.__ModuleLoader__.load({
       const mapB = new Map((beforeFiles || []).map((f) => [f.relPath, f]));
       const mapA = new Map((afterFiles || []).map((f) => [f.relPath, f]));
       const allPaths = Array.from(new Set([...mapB.keys(), ...mapA.keys()])).sort();
-      if (!allPaths.length) return h('div', { className: 'gz-field-hint' }, '无文件快照差异');
+      if (!allPaths.length) return h('div', { className: 'evo-field-hint' }, '无文件快照差异');
 
       return h(
         'table',
-        { className: 'gz-table' },
+        { className: 'evo-table' },
         h(
           'thead',
           null,
           h(
             'tr',
             null,
-            h('th', null, 'STATUS'),
-            h('th', null, 'FILE'),
-            h('th', null, 'BEFORE SHA'),
-            h('th', null, 'AFTER SHA'),
-            h('th', { style: { textAlign: 'right' } }, 'BYTES'),
+            h('th', null, '状态'),
+            h('th', null, '文件'),
+            h('th', null, '修改前 SHA'),
+            h('th', null, '修改后 SHA'),
+            h('th', { style: { textAlign: 'right' } }, '字节'),
           ),
         ),
         h(
@@ -227,15 +243,15 @@ window.__ModuleLoader__.load({
           allPaths.map((p) => {
             const b = mapB.get(p);
             const a = mapA.get(p);
-            const status = !b ? 'ADDED' : !a ? 'REMOVED' : b.sha === a.sha ? 'UNCHANGED' : 'MODIFIED';
+            const status = !b ? '新增' : !a ? '移除' : b.sha === a.sha ? '未变' : '修改';
             return h(
               'tr',
               { key: p },
-              h('td', { className: 'gz-mono' }, status),
-              h('td', { className: 'gz-mono' }, p),
-              h('td', { className: 'gz-mono gz-muted' }, b ? b.sha.slice(0, 10) : '—'),
-              h('td', { className: 'gz-mono' }, a ? a.sha.slice(0, 10) : '—'),
-              h('td', { className: 'gz-mono', style: { textAlign: 'right' } }, a ? `${a.size}` : b ? `-${b.size}` : '0'),
+              h('td', { className: 'evo-mono' }, status),
+              h('td', { className: 'evo-mono' }, p),
+              h('td', { className: 'evo-mono evo-muted' }, b ? b.sha.slice(0, 10) : '—'),
+              h('td', { className: 'evo-mono' }, a ? a.sha.slice(0, 10) : '—'),
+              h('td', { className: 'evo-mono', style: { textAlign: 'right' } }, a ? `${a.size}` : b ? `-${b.size}` : '0'),
             );
           }),
         ),
@@ -287,40 +303,41 @@ window.__ModuleLoader__.load({
       if (collapsed) {
         return h(
           'article',
-          { className: 'gz-draft gz-draft-compact' },
+          { className: 'evo-draft evo-draft-compact' },
           h(
             'div',
-            { className: 'gz-compact-row' },
-            h('span', { className: 'gz-dot', style: { background: draft.isPatch ? '#002FA7' : '#FF6B35' } }),
-            h('span', { className: 'gz-mono gz-muted' }, draft.isPatch ? 'PATCH' : 'NEW'),
-            h('span', { className: 'gz-compact-name' }, b.titleZh || draft.name),
-            h('span', { className: 'gz-compact-sum' }, b.whatItIs || draft.description || ''),
+            { className: 'evo-compact-row' },
+            h(
+              'span',
+              { className: 'evo-badge' + (draft.isPatch ? ' evo-badge-info' : '') },
+              draft.isPatch ? '补丁草稿' : '新技能',
+            ),
+            h('span', { className: 'evo-compact-name' }, b.titleZh || draft.name),
+            h('span', { className: 'evo-compact-sum' }, b.whatItIs || draft.description || ''),
             h(
               'div',
-              { className: 'gz-compact-actions' },
+              { className: 'evo-compact-actions' },
               h(
                 'button',
-                { type: 'button', className: 'gz-link-btn', onClick: () => setCollapsed(false) },
+                { type: 'button', className: 'evo-link-btn', onClick: () => setCollapsed(false) },
                 '展开审阅',
               ),
               h(
                 'button',
                 {
                   type: 'button',
-                  className: 'gz-btn ghost',
-                  style: { height: '26px', padding: '0 10px', fontSize: '11.5px' },
+                  className: 'evo-btn',
                   disabled: isBusy,
                   onClick: () => onPromote(draft.name, '同意采纳：按当前草稿直接入库', false),
                 },
-                h(SvgIcon, { d: ICONS.check, size: 12 }),
+                h(SvgIcon, { d: ICONS.check, size: 14 }),
                 '采纳',
               ),
               h(
                 'button',
                 {
                   type: 'button',
-                  className: 'gz-btn ghost danger',
-                  style: { height: '26px', padding: '0 10px', fontSize: '11.5px' },
+                  className: 'evo-btn danger',
                   disabled: isBusy,
                   onClick: () => onDiscard(draft.name, '快速驳回'),
                 },
@@ -333,27 +350,25 @@ window.__ModuleLoader__.load({
 
       return h(
         'article',
-        { className: 'gz-draft' },
-        // 顶栏：状态方点 + 技能标识 + 源码切换
+        { className: 'evo-draft' },
+        // 顶栏：草稿类型徽章 + 技能标识 + 源码切换
         h(
           'div',
-          { className: 'gz-draft-kicker' },
-          h('span', {
-            className: 'gz-dot',
-            style: { background: draft.isPatch ? '#002FA7' : '#FF6B35' },
-          }),
-          h('span', { className: 'gz-mono' }, draft.isPatch ? 'PATCH UMBRELLA' : 'NEW SKILL'),
-          h('span', { className: 'gz-sep' }, '/'),
-          h('span', { className: 'gz-mono gz-ink' }, draft.name),
+          { className: 'evo-draft-kicker' },
+          h(
+            'span',
+            { className: 'evo-badge' + (draft.isPatch ? ' evo-badge-info' : '') },
+            draft.isPatch ? '补丁草稿' : '新技能',
+          ),
+          h('span', { className: 'evo-kicker evo-mono' }, draft.name),
           draft.resources?.length
-            ? h('span', { className: 'gz-mono gz-muted' }, `+${draft.resources.length} REF`)
+            ? h('span', { className: 'evo-kicker' }, `含 ${draft.resources.length} 个引用文件`)
             : null,
           h(
             'button',
             {
               type: 'button',
-              className: 'gz-link-btn',
-              style: { marginLeft: 'auto' },
+              className: 'evo-link-btn',
               onClick: () => setShowSource((v) => !v),
             },
             h(SvgIcon, { d: ICONS.code, size: 13 }),
@@ -364,14 +379,14 @@ window.__ModuleLoader__.load({
         // 标题与核心中文解释
         h(
           'div',
-          { className: 'gz-draft-main' },
-          h('h3', { className: 'gz-draft-title' }, b.titleZh || draft.name),
-          h('p', { className: 'gz-draft-summary' }, b.whatItIs || draft.description || '(无摘要)'),
+          { className: 'evo-draft-main' },
+          h('h3', { className: 'evo-draft-title' }, b.titleZh || draft.name),
+          h('p', { className: 'evo-draft-summary' }, b.whatItIs || draft.description || '(无摘要)'),
           b.triggerZh
             ? h(
                 'div',
-                { className: 'gz-trigger-line' },
-                h('span', { className: 'gz-mono gz-muted' }, 'TRIGGER'),
+                { className: 'evo-trigger-line' },
+                h('span', { className: 'evo-kicker' }, '触发场景'),
                 h('span', null, b.triggerZh),
               )
             : null,
@@ -386,23 +401,23 @@ window.__ModuleLoader__.load({
               // 共用 1px 细线的步骤网格（点击任一步骤即可定点插入想法）
               h(
                 'div',
-                { className: 'gz-steps-grid' },
+                { className: 'evo-steps-grid' },
                 steps.slice(0, 4).map((st, idx) =>
                   h(
                     'div',
                     {
                       key: idx,
-                      className: 'gz-step-cell' + (selectedStep === idx ? ' on' : ''),
+                      className: 'evo-step-cell' + (selectedStep === idx ? ' on' : ''),
                       onClick: () => handleStepClick(idx, st),
                       title: '点击针对此步骤插入您的修改想法',
                     },
                     h(
                       'div',
-                      { className: 'gz-step-top' },
-                      h('span', { className: 'gz-mono gz-muted' }, `STEP 0${idx + 1}`),
-                      h('span', { className: 'gz-step-add gz-mono' }, '+ 插入想法'),
+                      { className: 'evo-step-top' },
+                      h('span', { className: 'evo-step-label' }, `步骤 ${idx + 1}`),
+                      h('span', { className: 'evo-step-add' }, '+ 插入想法'),
                     ),
-                    h('div', { className: 'gz-step-body' }, String(st).replace(/^\d+\.\s*/, '')),
+                    h('div', { className: 'evo-step-body' }, String(st).replace(/^\d+\.\s*/, '')),
                   ),
                 ),
               ),
@@ -411,12 +426,12 @@ window.__ModuleLoader__.load({
               pitfalls.length
                 ? h(
                     'div',
-                    { className: 'gz-pitfalls' },
-                    h('span', { className: 'gz-mono gz-muted' }, 'GUARDS'),
+                    { className: 'evo-pitfalls' },
+                    h('span', { className: 'evo-kicker', style: { flex: 'none' } }, '防坑规则'),
                     h(
                       'div',
-                      { className: 'gz-pitfalls-list' },
-                      pitfalls.map((p, i) => h('span', { key: i, className: 'gz-pitfall-item' }, `· ${p}`)),
+                      { className: 'evo-pitfalls-list' },
+                      pitfalls.map((p, i) => h('span', { key: i, className: 'evo-pitfall-item' }, `· ${p}`)),
                     ),
                   )
                 : null,
@@ -424,17 +439,17 @@ window.__ModuleLoader__.load({
               // 同意 vs 驳回 二栏极简后果对照
               h(
                 'div',
-                { className: 'gz-outcomes' },
+                { className: 'evo-outcomes' },
                 h(
                   'div',
-                  { className: 'gz-outcome-cell' },
-                  h('span', { className: 'gz-mono gz-ok-label' }, 'IF APPROVED / 同意效果'),
+                  { className: 'evo-outcome-cell' },
+                  h('span', { className: 'evo-kicker evo-ok-label' }, '同意后'),
                   h('p', null, b.ifApprove || '写入正式技能库并即时热更新生效，随时可通过 SHA-256 账本回滚。'),
                 ),
                 h(
                   'div',
-                  { className: 'gz-outcome-cell' },
-                  h('span', { className: 'gz-mono gz-muted' }, 'IF REJECTED / 驳回效果'),
+                  { className: 'evo-outcome-cell' },
+                  h('span', { className: 'evo-kicker' }, '驳回后'),
                   h('p', null, b.ifReject || '安全销毁该暂存草稿，正式技能库保持 0 改动。'),
                 ),
               ),
@@ -444,8 +459,8 @@ window.__ModuleLoader__.load({
         b.aiAnalysis
           ? h(
               'div',
-              { className: 'gz-ai-note' },
-              h('span', { className: 'gz-mono' }, 'AI REVISION'),
+              { className: 'evo-ai-note' },
+              h('span', { className: 'evo-kicker' }, 'AI 修订说明'),
               h('span', null, b.aiAnalysis),
             )
           : null,
@@ -453,11 +468,11 @@ window.__ModuleLoader__.load({
         // 底部单行极简批示与操作栏
         h(
           'div',
-          { className: 'gz-draft-foot' },
+          { className: 'evo-draft-foot' },
           h(
             'div',
-            { className: 'gz-pills-row' },
-            h('span', { className: 'gz-mono gz-muted' }, 'DIRECTIVE'),
+            { className: 'evo-pills-row' },
+            h('span', { className: 'evo-kicker', style: { flex: 'none' } }, '审阅批示'),
             QUICK_IDEAS.map((item) => {
               const active = selectedPills.includes(item.text);
               return h(
@@ -465,7 +480,7 @@ window.__ModuleLoader__.load({
                 {
                   key: item.id,
                   type: 'button',
-                  className: 'gz-pill',
+                  className: 'evo-pill',
                   'aria-pressed': active ? 'true' : 'false',
                   onClick: () => togglePill(item),
                 },
@@ -475,10 +490,10 @@ window.__ModuleLoader__.load({
           ),
           h(
             'div',
-            { className: 'gz-action-row' },
+            { className: 'evo-action-row' },
             h('input', {
               type: 'text',
-              className: 'gz-input gz-directive-input',
+              className: 'evo-input evo-directive-input',
               placeholder: '输入您的批示或想法（必填：可点选上方快捷胶囊或点击步骤格子定点插入）…',
               value: comment,
               onChange: (e) => setComment(e.target.value),
@@ -487,7 +502,7 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
-                className: 'gz-btn ghost',
+                className: 'evo-btn ghost',
                 disabled: isBusy || !finalDirective,
                 onClick: () => onRefine(draft.name, finalDirective),
                 title: '让 AI 先按您的想法修改草稿并预览',
@@ -498,7 +513,7 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
-                className: 'gz-btn',
+                className: 'evo-btn primary',
                 disabled: isBusy || !finalDirective,
                 onClick: () =>
                   onPromote(
@@ -514,7 +529,7 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
-                className: 'gz-btn ghost danger',
+                className: 'evo-btn ghost danger',
                 disabled: isBusy,
                 onClick: () => onDiscard(draft.name, finalDirective || '人工审阅驳回'),
               },
@@ -546,58 +561,70 @@ window.__ModuleLoader__.load({
         }
       };
 
-      const dotColor =
-        skill.state === 'active' ? '#002FA7' : skill.state === 'stale' ? '#FF6B35' : '#737373';
+      const stateLabel =
+        { active: '活跃', stale: '陈旧', archived: '归档' }[skill.state] || skill.state || '活跃';
 
       return h(
         'div',
-        { className: 'gz-row-card' },
+        { className: 'evo-row-card' },
         h(
           'div',
-          { className: 'gz-row-line' },
-          h('span', { className: 'gz-dot', style: { background: dotColor } }),
-          h('button', { type: 'button', className: 'gz-row-name gz-mono', onClick: toggleOpen }, skill.name),
-          h('span', { className: 'gz-mono gz-muted' }, (skill.state || 'active').toUpperCase()),
-          skill.pinned ? h('span', { className: 'gz-mono gz-accent' }, 'PINNED') : null,
-          h('span', { className: 'gz-row-desc' }, skill.description || '—'),
-          h('span', { className: 'gz-mono gz-muted', style: { marginLeft: 'auto' } }, `USED ${skill.useCount || 0}`),
+          { className: 'evo-row-line' },
           h(
-            'button',
-            {
-              type: 'button',
-              className: 'gz-ibtn' + (skill.pinned ? ' on' : ''),
-              disabled: isBusy,
-              title: skill.pinned ? '取消固定' : '固定技能（豁免自动归档与合并）',
-              onClick: () => onPin(skill.name, !skill.pinned),
-            },
-            h(SvgIcon, { d: ICONS.pin, size: 13 }),
+            'div',
+            { className: 'evo-row-main' },
+            h(
+              'div',
+              { className: 'evo-row-title-line' },
+              h('button', { type: 'button', className: 'evo-row-name', onClick: toggleOpen }, skill.name),
+              h('span', { className: 'evo-badge' }, stateLabel),
+              skill.pinned ? h('span', { className: 'evo-badge' }, '已固定') : null,
+              h('span', { className: 'evo-row-meta' }, `使用 ${skill.useCount || 0} 次`),
+            ),
+            h('span', { className: 'evo-row-desc' }, skill.description || '—'),
           ),
           h(
-            'button',
-            {
-              type: 'button',
-              className: 'gz-link-btn',
-              onClick: toggleOpen,
-            },
-            open ? '收起' : '详情',
+            'div',
+            { className: 'evo-row-end' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'evo-ibtn' + (skill.pinned ? ' on' : ''),
+                disabled: isBusy,
+                title: skill.pinned ? '取消固定' : '固定技能（豁免自动归档与合并）',
+                'aria-label': skill.pinned ? '取消固定' : '固定技能',
+                onClick: () => onPin(skill.name, !skill.pinned),
+              },
+              h(SvgIcon, { d: ICONS.pin, size: 14 }),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'evo-link-btn',
+                onClick: toggleOpen,
+              },
+              open ? '收起' : '详情',
+            ),
+            skill.createdBy === 'agent'
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'evo-link-btn',
+                    disabled: isBusy,
+                    onClick: () => onDisown(skill.name),
+                  },
+                  '脱离',
+                )
+              : null,
           ),
-          skill.createdBy === 'agent'
-            ? h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'gz-link-btn gz-muted',
-                  disabled: isBusy,
-                  onClick: () => onDisown(skill.name),
-                },
-                '脱离',
-              )
-            : null,
         ),
         open && detail
           ? h(
               'div',
-              { className: 'gz-drawer' },
+              { className: 'evo-drawer' },
               h(CodePreview, { frontmatter: detail.frontmatter, body: detail.body }),
             )
           : null,
@@ -613,47 +640,72 @@ window.__ModuleLoader__.load({
         entry.action !== 'draft_discard' &&
         !String(entry.action || '').startsWith('draft_');
 
+      const actionLabel =
+        {
+          promote: '入库',
+          rollback: '回滚',
+          draft_discard: '驳回草稿',
+          draft_add_reference: '新增引用',
+          draft_update: '更新草稿',
+          adopt: '纳管',
+          pin: '固定',
+          disown: '脱离',
+          consolidate: '建伞合并',
+          tidy: '整理',
+        }[entry.action] || String(entry.action || '').toUpperCase();
+
       return h(
         'div',
-        { className: 'gz-row-card' },
+        { className: 'evo-row-card' },
         h(
           'div',
-          { className: 'gz-row-line' },
-          h('span', { className: 'gz-mono gz-muted' }, entry.id.slice(0, 8)),
-          h('span', { className: 'gz-mono gz-ink' }, entry.action.toUpperCase()),
-          h('span', { className: 'gz-mono gz-accent' }, entry.target),
+          { className: 'evo-row-line' },
           h(
-            'span',
-            { className: 'gz-row-desc' },
-            entry.extra?.userComment
-              ? `批示：${entry.extra.userComment}`
-              : entry.extra?.rationale || `${entry.beforeFiles || 0} → ${entry.afterFiles || 0} files`,
+            'div',
+            { className: 'evo-row-main' },
+            h(
+              'div',
+              { className: 'evo-row-title-line' },
+              h('span', { className: 'evo-row-meta' }, actionLabel),
+              h('span', { className: 'evo-row-name' }, entry.target),
+              h('span', { className: 'evo-mono evo-muted' }, entry.id.slice(0, 8)),
+            ),
+            h(
+              'span',
+              { className: 'evo-row-desc' },
+              entry.extra?.userComment
+                ? `批示：${entry.extra.userComment}`
+                : entry.extra?.rationale || `${entry.beforeFiles || 0} → ${entry.afterFiles || 0} 个文件`,
+            ),
           ),
-          h('span', { className: 'gz-mono gz-muted', style: { marginLeft: 'auto' } }, ts),
           h(
-            'button',
-            { type: 'button', className: 'gz-link-btn', onClick: () => setOpen((v) => !v) },
-            open ? '收起' : 'SHA 差异',
+            'div',
+            { className: 'evo-row-end' },
+            h('span', { className: 'evo-row-meta' }, ts),
+            h(
+              'button',
+              { type: 'button', className: 'evo-link-btn', onClick: () => setOpen((v) => !v) },
+              open ? '收起' : 'SHA 差异',
+            ),
+            canRollback
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'evo-btn',
+                    disabled: isBusy,
+                    onClick: () => onRollback(entry.id, entry.target),
+                  },
+                  h(SvgIcon, { d: ICONS.undo, size: 14 }),
+                  isBusy ? '回滚中…' : '回滚',
+                )
+              : null,
           ),
-          canRollback
-            ? h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'gz-btn ghost',
-                  style: { height: '26px', padding: '0 8px', fontSize: '11px' },
-                  disabled: isBusy,
-                  onClick: () => onRollback(entry.id, entry.target),
-                },
-                h(SvgIcon, { d: ICONS.undo, size: 12 }),
-                isBusy ? '回滚中…' : '回滚',
-              )
-            : null,
         ),
         open
           ? h(
               'div',
-              { className: 'gz-drawer' },
+              { className: 'evo-drawer' },
               h(FileDiffTable, {
                 beforeFiles: entry.before?.files || [],
                 afterFiles: entry.after?.files || [],
@@ -696,47 +748,35 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'gz-settings-box' },
+        { className: 'evo-settings-box' },
         h(
           'div',
-          { className: 'gz-settings-grid' },
+          { className: 'evo-settings-grid' },
           h(
             SettingField,
-            { label: '启用后台复盘采集', mono: 'ENABLED', hint: '每个有效会话回合结束后自动提取可复用经验' },
-            h(
-              'div',
-              { className: 'gz-pills-row' },
-              ['true', 'false'].map((v) =>
-                h(
-                  'button',
-                  {
-                    key: v,
-                    type: 'button',
-                    className: 'gz-pill',
-                    'aria-pressed': String(Boolean(draft.enabled)) === v ? 'true' : 'false',
-                    onClick: () => set('enabled', v === 'true'),
-                  },
-                  v === 'true' ? '开启 (ON)' : '关闭 (OFF)',
-                ),
-              ),
-            ),
+            { label: '启用后台复盘采集', hint: '每个有效会话回合结束后自动提取可复用经验' },
+            h(NativeSwitch, {
+              checked: Boolean(draft.enabled),
+              label: '启用后台复盘采集',
+              onChange: (v) => set('enabled', v),
+            }),
           ),
           h(
             SettingField,
-            { label: '落盘模式', mono: 'MODE', hint: 'DRAFT 写入暂存区等待批示；APPLY 通过安全闸门后直接落盘' },
+            { label: '落盘模式', hint: '草稿审阅先写入暂存区等待批示；直接落盘通过安全闸门后立即生效' },
             h(
               'div',
-              { className: 'gz-pills-row' },
+              { className: 'evo-pills-row' },
               [
-                ['draft', 'DRAFT · 草稿审阅'],
-                ['apply', 'APPLY · 自动落盘'],
+                ['draft', '草稿审阅'],
+                ['apply', '直接落盘'],
               ].map(([k, label]) =>
                 h(
                   'button',
                   {
                     key: k,
                     type: 'button',
-                    className: 'gz-pill',
+                    className: 'evo-pill',
                     'aria-pressed': draft.mode === k ? 'true' : 'false',
                     onClick: () => set('mode', k),
                   },
@@ -747,7 +787,7 @@ window.__ModuleLoader__.load({
           ),
           h(
             SettingField,
-            { label: '复盘回合间隔', mono: 'MIN TURNS', hint: '建议设为 1，避免高价值回合被节流跳过' },
+            { label: '复盘回合间隔', hint: '建议设为 1，避免高价值回合被节流跳过' },
             h(SettingNumberInput, {
               value: draft.minTurnsBetween,
               min: 1,
@@ -757,7 +797,7 @@ window.__ModuleLoader__.load({
           ),
           h(
             SettingField,
-            { label: '复盘时间防抖（分钟）', mono: 'COOLDOWN MIN', hint: '两次后台复盘之间的最短间隔分钟数' },
+            { label: '复盘时间防抖（分钟）', hint: '两次后台复盘之间的最短间隔分钟数' },
             h(SettingNumberInput, {
               value: draft.minMinutesBetween,
               min: 0,
@@ -767,7 +807,7 @@ window.__ModuleLoader__.load({
           ),
           h(
             SettingField,
-            { label: '快照保留消息数', mono: 'MAX MESSAGES', hint: '送入复盘模型的最近原文消息数，更早消息自动折叠为摘要' },
+            { label: '快照保留消息数', hint: '送入复盘模型的最近原文消息数，更早消息自动折叠为摘要' },
             h(SettingNumberInput, {
               value: draft.maxMessages,
               min: 4,
@@ -777,7 +817,7 @@ window.__ModuleLoader__.load({
           ),
           h(
             SettingField,
-            { label: '快照字符上限', mono: 'MAX CHARS', hint: '单次复盘最大上下文字符预算' },
+            { label: '快照字符上限', hint: '单次复盘最大上下文字符预算' },
             h(SettingNumberInput, {
               value: draft.maxChars,
               min: 2000,
@@ -788,10 +828,10 @@ window.__ModuleLoader__.load({
           ),
           h(
             SettingField,
-            { label: '陈旧 / 归档天数阈值', mono: 'STALE / ARCHIVE DAYS', hint: '默认 14 天标 stale，30 天归入 .archive（永不删除）' },
+            { label: '陈旧 / 归档天数阈值', hint: '默认 14 天标记为陈旧，30 天归入 .archive（永不删除）' },
             h(
               'div',
-              { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } },
+              { className: 'evo-inline-fields' },
               h(SettingNumberInput, {
                 value: draft.staleAfterDays,
                 min: 1,
@@ -808,11 +848,11 @@ window.__ModuleLoader__.load({
           ),
           h(
             SettingField,
-            { label: '复盘专用模型（成本护栏）', mono: 'REVIEW MODEL', hint: '默认固定为轻量高速模型，避免消耗主模型高阶配额' },
+            { label: '复盘专用模型', hint: '留空继承当前会话模型；也可填更便宜的辅助模型以省主模型配额' },
             h('input', {
               type: 'text',
-              className: 'gz-input',
-              placeholder: 'deepseek-chat',
+              className: 'evo-input evo-input-wide',
+              placeholder: 'provider/model（留空继承会话模型）',
               value: draft.reviewModel?.model || '',
               onChange: (e) =>
                 set('reviewModel', { ...(draft.reviewModel || {}), model: e.target.value }),
@@ -821,25 +861,25 @@ window.__ModuleLoader__.load({
         ),
         h(
           'div',
-          { className: 'gz-settings-foot' },
-          h('span', { className: 'gz-mono gz-muted' }, `ROOT: ${config.skillsRoot || '~/.dsh/skills'}`),
+          { className: 'evo-settings-foot' },
+          h('span', { className: 'evo-kicker' }, `技能目录：${config.skillsRoot || '~/.dsh/skills'}`),
           h(
             'button',
             {
               type: 'button',
-              className: 'gz-btn',
+              className: 'evo-btn primary',
               disabled: !dirty || isBusy,
               onClick: () => onSave(draft),
             },
-            h(SvgIcon, { d: ICONS.check, size: 13 }),
-            isBusy ? '保存中…' : dirty ? '保存并即时生效' : '已同步',
+            h(SvgIcon, { d: ICONS.check, size: 14 }),
+            isBusy ? '保存中…' : dirty ? '保存' : '已同步',
           ),
         ),
       );
     }
 
     // ---------- 8. 主工作台（歸藏瑞士国际主义左栏 + 右主区架构）----------
-    function EvolutionPanel() {
+    function EvolutionPanel({ variant = 'page' }) {
       const { data, error, loading, reload } = useSnapshot();
       const [view, setView] = useState('home'); // home | drafts | skills | ledger | settings
       const [busyKey, setBusyKey] = useState(null);
@@ -879,16 +919,16 @@ window.__ModuleLoader__.load({
       );
 
       if (loading && !data) {
-        return h('div', { className: 'gz-loading gz-mono' }, 'LOADING SKILL EVOLUTION…');
+        return h('div', { className: 'evo-page' }, h('div', { className: 'evo-loading' }, '正在加载自进化数据…'));
       }
       if (error && !data) {
         return h(
           'div',
-          { className: 'gz-loading' },
-          h('div', { className: 'gz-mono' }, `CONNECTION FAILED: ${error}`),
+          { className: 'evo-loading' },
+          h('div', null, `连接失败：${error}`),
           h(
             'button',
-            { type: 'button', className: 'gz-btn', style: { marginTop: '12px' }, onClick: () => reload() },
+            { type: 'button', className: 'evo-btn', style: { marginTop: '12px' }, onClick: () => reload() },
             '重试连接',
           ),
         );
@@ -1013,180 +1053,195 @@ window.__ModuleLoader__.load({
         return true;
       });
 
-      return h(
-        'div',
-        { className: 'gz-shell' },
-        // 左侧极简瑞士导航栏
-        h(
-          'aside',
-          { className: 'gz-rail' },
+      const TABS = [
+        ['home', '概览'],
+        ['drafts', '待审草稿', stats.drafts],
+        ['skills', '技能库', stats.skills],
+        ['ledger', '账本', stats.ledger],
+        ['settings', '参数'],
+      ];
+
+      // 设置页插槽：只保留原生设置页该有的内容（参数 + 状态），审阅工作台在侧栏面板
+      if (variant === 'settings') {
+        return h(
+          React.Fragment,
+          null,
           h(
             'div',
-            { className: 'gz-brand' },
-            h('span', { className: 'gz-brand-mark', 'aria-hidden': 'true' }),
+            { className: 'evo-page evo-page-settings' },
+            h(
+              'div',
+              { className: 'evo-page-inner' },
+              h(
+                'header',
+                { className: 'evo-page-head' },
+                h(
+                  'div',
+                  null,
+                  h('h1', { className: 'evo-page-title' }, '自进化'),
+                  h(
+                    'p',
+                    { className: 'evo-page-lead' },
+                    '回合结束后自动复盘会话，把可复用流程与防坑规则蒸馏成技能草稿；审阅与入库在侧栏「自进化」中完成。',
+                  ),
+                ),
+              ),
+              h(SwissSettingsPanel, {
+                config,
+                busyKey,
+                onSave: (next) =>
+                  act(
+                    'save-config',
+                    () => api('/config', { method: 'POST', body: JSON.stringify(next) }),
+                    '配置已保存并同步至内存节流器',
+                  ),
+              }),
+            ),
+          ),
+          toast
+            ? h(
+                'div',
+                { className: 'evo-toast' + (toast.tone === 'err' ? ' err' : '') },
+                h('span', { className: 'evo-kicker' }, toast.tone === 'err' ? '错误' : '完成'),
+                h('span', null, toast.message),
+              )
+            : null,
+        );
+      }
+
+      return h(
+        'div',
+        { className: 'evo-page' },
+        h(
+          'div',
+          { className: 'evo-page-inner' },
+          h(
+            'header',
+            { className: 'evo-page-head' },
             h(
               'div',
               null,
-              h('span', { className: 'gz-brand-name' }, '自进化工作台'),
-              h('span', { className: 'gz-brand-sub' }, 'skill-evolution'),
+              h('h1', { className: 'evo-page-title' }, '自进化'),
+              h(
+                'p',
+                { className: 'evo-page-lead' },
+                '回合结束后自动提取可复用流程与防坑规则。打开草稿可查看中文简报、点击步骤插入想法，或直接采纳进正式技能库。',
+              ),
+            ),
+            h(
+              'div',
+              { className: 'evo-head-actions' },
+              drafts.length > 0
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'evo-btn',
+                      disabled: busyKey === 'tidy-preview' || busyKey === 'tidy-apply',
+                      onClick: handleTidyPreview,
+                      title: '先出方案：自动升级同名补丁、自动归档垃圾草稿，只把真正需要你决策的留下来',
+                    },
+                    h(SvgIcon, { d: ICONS.spark, size: 14 }),
+                    busyKey === 'tidy-preview' ? '正在分析…' : `一键整理 (${drafts.length})`,
+                  )
+                : null,
+              drafts.length > 1
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'evo-btn',
+                      disabled: busyKey === 'promote-batch',
+                      onClick: handlePromoteBatch,
+                    },
+                    h(SvgIcon, { d: ICONS.check, size: 14 }),
+                    busyKey === 'promote-batch' ? '批量入库中…' : `全部采纳 (${drafts.length})`,
+                  )
+                : null,
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'evo-btn',
+                  onClick: () => reload(),
+                },
+                h(SvgIcon, { d: ICONS.refresh, size: 14 }),
+                '刷新',
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'evo-btn primary',
+                  disabled: busyKey === 'manual-review',
+                  onClick: handleManualReview,
+                },
+                h(SvgIcon, { d: ICONS.play, size: 13 }),
+                busyKey === 'manual-review' ? '正在复盘当前会话…' : '立即复盘当前会话',
+              ),
             ),
           ),
+
+          // 原生分段标签页
           h(
             'nav',
-            { className: 'gz-nav', 'aria-label': '自进化导航' },
-            h('div', { className: 'gz-nav-group' }, 'WORKBENCH'),
-            [
-              ['home', '概览与待审', stats.drafts || null],
-              ['drafts', '待审草稿箱', stats.drafts],
-              ['skills', '正式技能与建伞', stats.skills],
-              ['ledger', 'SHA-256 账本', stats.ledger],
-              ['settings', '引擎参数', null],
-            ].map(([id, label, count]) =>
+            { className: 'evo-tabs', role: 'tablist', 'aria-label': '自进化视图' },
+            TABS.map(([id, label, count]) =>
               h(
                 'button',
                 {
                   key: id,
                   type: 'button',
-                  className: 'gz-nav-item' + (view === id ? ' on' : ''),
+                  role: 'tab',
+                  className: 'evo-tab',
+                  'aria-selected': view === id ? 'true' : 'false',
                   onClick: () => setView(id),
                 },
-                h('span', null, label),
+                label,
                 count !== null && count !== undefined
-                  ? h('span', { className: 'gz-nav-count' }, String(count))
+                  ? h('span', { className: 'evo-tab-count' }, String(count))
                   : null,
               ),
             ),
           ),
+
+          // 概览统计（原生行式，无自造卡片）
           h(
             'div',
-            { className: 'gz-rail-foot' },
-            h('div', { className: 'gz-foot-head' }, 'TELEMETRY'),
+            { className: 'evo-stats' },
             h(
               'div',
-              { className: 'gz-foot-row' },
-              h('span', null, 'MODE'),
-              h('span', null, (config.mode || 'draft').toUpperCase()),
+              { className: 'evo-stat', onClick: () => setView('drafts') },
+              h('div', { className: 'evo-stat-label' }, '待审草稿'),
+              h('div', { className: 'evo-stat-val' }, String(stats.drafts)),
+              h('div', { className: 'evo-stat-sub' }, stats.drafts ? '等待您批示审阅' : '暂存区已清空'),
             ),
             h(
               'div',
-              { className: 'gz-foot-row' },
-              h('span', null, 'THROTTLE'),
-              h('span', null, `${config.minTurnsBetween || 1}T / ${config.minMinutesBetween || 2}M`),
+              { className: 'evo-stat', onClick: () => setView('skills') },
+              h('div', { className: 'evo-stat-label' }, '正式技能'),
+              h('div', { className: 'evo-stat-val' }, String(stats.skills)),
+              h('div', { className: 'evo-stat-sub' }, `活跃 ${stats.byState?.active || 0} · 陈旧 ${stats.byState?.stale || 0}`),
             ),
             h(
               'div',
-              { className: 'gz-foot-row' },
-              h('span', null, 'HEARTBEAT'),
-              h('span', null, heartbeatText),
+              { className: 'evo-stat', onClick: () => setView('ledger') },
+              h('div', { className: 'evo-stat-label' }, '账本快照'),
+              h('div', { className: 'evo-stat-val' }, String(stats.ledger)),
+              h('div', { className: 'evo-stat-sub' }, '内容寻址 · 可随时回滚'),
+            ),
+            h(
+              'div',
+              { className: 'evo-stat', onClick: () => setView('settings') },
+              h('div', { className: 'evo-stat-label' }, '最近心跳'),
+              h('div', { className: 'evo-stat-val' }, heartbeatText),
+              h('div', { className: 'evo-stat-sub' }, heartbeatSub),
             ),
           ),
-        ),
-
-        // 右侧主画布
-        h(
-          'main',
-          { className: 'gz-main' },
-          // 页头：方括号小标签 + 细体大标题 + 右侧操作按钮
           h(
-            'header',
-            { className: 'gz-head' },
-            h(
-              'div',
-              { className: 'gz-head-top' },
-              h('span', { className: 'gz-eyebrow' }, 'PROCEDURAL MEMORY · HERMES LOOP'),
-              h(
-                'div',
-                { className: 'gz-head-actions' },
-                drafts.length > 0
-                  ? h(
-                      'button',
-                      {
-                        type: 'button',
-                        className: 'gz-btn',
-                        disabled: busyKey === 'tidy-preview' || busyKey === 'tidy-apply',
-                        onClick: handleTidyPreview,
-                        title: '先出方案：自动升级同名补丁、自动归档垃圾草稿，只把真正需要你决策的留下来',
-                      },
-                      h(SvgIcon, { d: ICONS.spark, size: 13 }),
-                      busyKey === 'tidy-preview' ? '正在分析…' : `一键整理 (${drafts.length})`,
-                    )
-                  : null,
-                drafts.length > 1
-                  ? h(
-                      'button',
-                      {
-                        type: 'button',
-                        className: 'gz-btn ghost',
-                        disabled: busyKey === 'promote-batch',
-                        onClick: handlePromoteBatch,
-                      },
-                      h(SvgIcon, { d: ICONS.check, size: 13 }),
-                      busyKey === 'promote-batch' ? '批量入库中…' : `全量采纳 (${drafts.length})`,
-                    )
-                  : null,
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'gz-btn ghost',
-                    onClick: () => reload(),
-                  },
-                  h(SvgIcon, { d: ICONS.refresh, size: 13 }),
-                  '刷新',
-                ),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'gz-btn',
-                    disabled: busyKey === 'manual-review',
-                    onClick: handleManualReview,
-                  },
-                  h(SvgIcon, { d: ICONS.play, size: 12 }),
-                  busyKey === 'manual-review' ? '正在复盘当前会话…' : '立即复盘当前会话',
-                ),
-              ),
-            ),
-            h('h1', null, '自进化技能审阅与治理'),
-            h(
-              'p',
-              null,
-              '回合结束后自动提取可复用流程与防坑规则。打开草稿即可查看中文简报、点击任意步骤插入您的想法、或一键归并进正式技能库。',
-            ),
-          ),
-
-          // 四格共用 1px 细线的瑞士统计栏
-          h(
-            'div',
-            { className: 'gz-stats' },
-            h(
-              'div',
-              { className: 'gz-stat', onClick: () => setView('drafts') },
-              h('div', { className: 'gz-mono' }, '01 / STAGED DRAFTS'),
-              h('div', { className: 'gz-stat-val' }, String(stats.drafts)),
-              h('div', { className: 'gz-stat-sub' }, stats.drafts ? '待您批示审阅 →' : '暂存区已清空'),
-            ),
-            h(
-              'div',
-              { className: 'gz-stat', onClick: () => setView('skills') },
-              h('div', { className: 'gz-mono' }, '02 / ACTIVE UMBRELLAS'),
-              h('div', { className: 'gz-stat-val' }, String(stats.skills)),
-              h('div', { className: 'gz-stat-sub' }, `活跃 ${stats.byState?.active || 0} · 陈旧 ${stats.byState?.stale || 0}`),
-            ),
-            h(
-              'div',
-              { className: 'gz-stat', onClick: () => setView('ledger') },
-              h('div', { className: 'gz-mono' }, '03 / SHA-256 LEDGER'),
-              h('div', { className: 'gz-stat-val' }, String(stats.ledger)),
-              h('div', { className: 'gz-stat-sub' }, '内容寻址快照 · 随时回滚'),
-            ),
-            h(
-              'div',
-              { className: 'gz-stat', onClick: () => setView('settings') },
-              h('div', { className: 'gz-mono' }, '04 / HEARTBEAT'),
-              h('div', { className: 'gz-stat-val' }, heartbeatText),
-              h('div', { className: 'gz-stat-sub' }, heartbeatSub),
-            ),
+            'p',
+            { className: 'evo-meta' },
+            `模式 ${(config.mode || 'draft') === 'apply' ? '直接落盘' : '草稿审阅'} · 节流 ${config.minTurnsBetween || 1} 回合 / ${config.minMinutesBetween || 2} 分钟 · 心跳 ${heartbeatText}`,
           ),
 
           // 视图 1 & 2：概览 / 待审草稿
@@ -1196,50 +1251,50 @@ window.__ModuleLoader__.load({
                 null,
                 h(
                   'section',
-                  { className: 'gz-sec' },
+                  { className: 'evo-sec' },
                   h(
                     'div',
-                    { className: 'gz-sec-head' },
-                    h('span', { className: 'gz-num' }, '01'),
-                    h('h2', null, `待审阅技能草稿 (${drafts.length})`),
+                    { className: 'evo-sec-head' },
+                    h('h2', { className: 'evo-sec-title' }, '待审阅技能草稿'),
+                    h('span', { className: 'evo-count' }, String(drafts.length)),
                     drafts.length > 0
                       ? h(
                           'span',
-                          { className: 'gz-mono gz-muted', style: { marginLeft: 'auto' } },
-                          '点击任意步骤格子可定点插入想法',
+                          { className: 'evo-kicker', style: { marginLeft: 'auto' } },
+                          '点击步骤可插入想法',
                         )
                       : null,
                   ),
                   tidyPlan
                     ? h(
                         'div',
-                        { className: 'gz-tidy-box' },
+                        { className: 'evo-tidy-box' },
                         h(
                           'div',
-                          { className: 'gz-tidy-head' },
-                          h('span', { className: 'gz-mono gz-ink' }, '整理方案'),
+                          { className: 'evo-tidy-head' },
+                          h('span', { className: 'evo-ink' }, '整理方案'),
                           h(
                             'span',
-                            { className: 'gz-tidy-stats' },
+                            { className: 'evo-tidy-stats' },
                             h('span', null, `自动升级补丁 ${tidyPlan.summary?.autoPromote || 0}`),
-                            h('span', { className: 'gz-sep' }, '/'),
+                            h('span', { className: 'evo-sep' }, '/'),
                             h('span', null, `自动归档垃圾 ${(tidyPlan.summary?.corrupt || 0) + (tidyPlan.summary?.autoDrop || 0)}`),
-                            h('span', { className: 'gz-sep' }, '/'),
-                            h('span', { className: 'gz-accent' }, `需你决策 ${tidyPlan.summary?.groupsNeedingDecision || 0} 组`),
+                            h('span', { className: 'evo-sep' }, '/'),
+                            h('span', { className: 'evo-accent' }, `需你决策 ${tidyPlan.summary?.groupsNeedingDecision || 0} 组`),
                           ),
                           h(
                             'div',
                             { style: { marginLeft: 'auto', display: 'flex', gap: '8px' } },
                             h(
                               'button',
-                              { type: 'button', className: 'gz-btn ghost', onClick: () => setTidyPlan(null) },
+                              { type: 'button', className: 'evo-btn ghost', onClick: () => setTidyPlan(null) },
                               '收起',
                             ),
                             h(
                               'button',
                               {
                                 type: 'button',
-                                className: 'gz-btn',
+                                className: 'evo-btn',
                                 disabled: busyKey === 'tidy-apply',
                                 onClick: handleTidyApply,
                               },
@@ -1250,56 +1305,56 @@ window.__ModuleLoader__.load({
                         ),
                         h(
                           'div',
-                          { className: 'gz-tidy-grid' },
+                          { className: 'evo-tidy-grid' },
                           (tidyPlan.autoPromote || []).length
                             ? h(
                                 'div',
-                                { className: 'gz-tidy-cell' },
-                                h('div', { className: 'gz-mono gz-ok-label' }, 'AUTO · 直接升级（可回滚）'),
+                                { className: 'evo-tidy-cell' },
+                                h('div', { className: 'evo-kicker evo-ok-label' }, '自动升级（可回滚）'),
                                 tidyPlan.autoPromote.map((c) =>
-                                  h('div', { key: c.name, className: 'gz-tidy-item' }, `· ${c.name} → ${c.anchor}`),
+                                  h('div', { key: c.name, className: 'evo-tidy-item' }, `· ${c.name} → ${c.anchor}`),
                                 ),
                               )
                             : null,
                           (tidyPlan.corrupt || []).length + (tidyPlan.autoDrop || []).length
                             ? h(
                                 'div',
-                                { className: 'gz-tidy-cell' },
-                                h('div', { className: 'gz-mono gz-muted' }, 'AUTO · 归入 .archive（不删除）'),
+                                { className: 'evo-tidy-cell' },
+                                h('div', { className: 'evo-kicker' }, '自动归入 .archive（不删除）'),
                                 [...(tidyPlan.corrupt || []), ...(tidyPlan.autoDrop || [])].map((c) =>
-                                  h('div', { key: c.name, className: 'gz-tidy-item' }, `· ${c.name}`),
+                                  h('div', { key: c.name, className: 'evo-tidy-item' }, `· ${c.name}`),
                                 ),
                               )
                             : null,
                           (tidyPlan.groups || []).length
                             ? h(
                                 'div',
-                                { className: 'gz-tidy-cell gz-tidy-cell-wide' },
-                                h('div', { className: 'gz-mono gz-accent' }, 'HOLD · 只有这些需要你拍板'),
+                                { className: 'evo-tidy-cell evo-tidy-cell-wide' },
+                                h('div', { className: 'evo-kicker evo-accent' }, '需要你拍板的分组'),
                                 tidyPlan.groups.map((g) =>
                                   h(
                                     'div',
-                                    { key: g.theme, className: 'gz-tidy-group' },
+                                    { key: g.theme, className: 'evo-tidy-group' },
                                     h(
                                       'div',
-                                      { className: 'gz-tidy-group-head' },
-                                      h('span', { className: 'gz-tidy-group-name' }, g.theme),
+                                      { className: 'evo-tidy-group-head' },
+                                      h('span', { className: 'evo-tidy-group-name' }, g.theme),
                                       h(
                                         'span',
-                                        { className: 'gz-mono ' + (g.suggestion === 'merge' ? 'gz-accent' : 'gz-muted') },
+                                        { className: 'evo-kicker ' + (g.suggestion === 'merge' ? 'evo-accent' : 'evo-muted') },
                                         g.suggestion === 'merge' ? `建议合并 ${g.members.length} 份` : '可单独采纳',
                                       ),
                                     ),
                                     h(
                                       'div',
-                                      { className: 'gz-tidy-members' },
+                                      { className: 'evo-tidy-members' },
                                       g.members.map((m) =>
                                         h(
                                           'button',
                                           {
                                             key: m,
                                             type: 'button',
-                                            className: 'gz-pill',
+                                            className: 'evo-pill',
                                             onClick: () =>
                                               act(
                                                 `draft:${m}`,
@@ -1325,7 +1380,7 @@ window.__ModuleLoader__.load({
                   drafts.length
                     ? h(
                         'div',
-                        { className: 'gz-draft-list' },
+                        { className: 'evo-draft-list' },
                         drafts.map((d) =>
                           h(SwissDraftCard, {
                             key: d.name,
@@ -1339,30 +1394,29 @@ window.__ModuleLoader__.load({
                       )
                     : h(
                         'div',
-                        { className: 'gz-empty' },
-                        h('span', { className: 'gz-mono' }, 'NO STAGED DRAFTS'),
+                        { className: 'evo-empty' },
+                        h('div', { className: 'evo-ink' }, '暂无待审草稿'),
                         h('p', null, '当前没有待审阅的技能草稿。点击右上角「立即复盘当前会话」可随时提取新草稿。'),
                       ),
                 ),
                 view === 'home'
                   ? h(
                       'section',
-                      { className: 'gz-sec' },
+                      { className: 'evo-sec' },
                       h(
                         'div',
-                        { className: 'gz-sec-head' },
-                        h('span', { className: 'gz-num' }, '02'),
-                        h('h2', null, '最近账本变动'),
+                        { className: 'evo-sec-head' },
+                        h('h2', { className: 'evo-sec-title' }, '最近账本变动'),
                         h(
                           'button',
-                          { type: 'button', className: 'gz-more', onClick: () => setView('ledger') },
+                          { type: 'button', className: 'evo-more', onClick: () => setView('ledger') },
                           '查看全部账本',
                           h(SvgIcon, { d: ICONS.arrowRight, size: 13 }),
                         ),
                       ),
                       h(
                         'div',
-                        { className: 'gz-list' },
+                        { className: 'evo-list' },
                         ledger.slice(0, 5).map((e) =>
                           h(SwissLedgerRow, {
                             key: e.id,
@@ -1389,20 +1443,19 @@ window.__ModuleLoader__.load({
                 null,
                 h(
                   'section',
-                  { className: 'gz-sec' },
+                  { className: 'evo-sec' },
                   h(
                     'div',
-                    { className: 'gz-sec-head' },
-                    h('span', { className: 'gz-num' }, '01'),
-                    h('h2', null, 'LLM 建伞合并 (Umbrella Consolidation)'),
+                    { className: 'evo-sec-head' },
+                    h('h2', { className: 'evo-sec-title' }, '合并为大伞技能'),
                     h(
                       'div',
-                      { style: { marginLeft: 'auto', display: 'flex', gap: '8px' } },
+                      { className: 'evo-sec-actions' },
                       h(
                         'button',
                         {
                           type: 'button',
-                          className: 'gz-btn ghost',
+                          className: 'evo-btn ghost',
                           disabled: busyKey === 'consolidate-preview',
                           onClick: handlePreviewConsolidate,
                         },
@@ -1413,7 +1466,7 @@ window.__ModuleLoader__.load({
                             'button',
                             {
                               type: 'button',
-                              className: 'gz-btn',
+                              className: 'evo-btn',
                               disabled: busyKey === 'consolidate-apply',
                               onClick: handleApplyConsolidate,
                             },
@@ -1425,40 +1478,40 @@ window.__ModuleLoader__.load({
                   consolidationPlan
                     ? h(
                         'div',
-                        { className: 'gz-plan-box' },
+                        { className: 'evo-plan-box' },
                         h(
                           'div',
-                          { className: 'gz-mono' },
+                          { className: 'evo-mono' },
                           consolidationPlan.skipped
-                            ? `SKIPPED: ${consolidationPlan.reason}`
-                            : consolidationPlan.summary || `PLANNED OPS: ${(consolidationPlan.planned || []).length}`,
+                            ? `已跳过：${consolidationPlan.reason}`
+                            : consolidationPlan.summary || `计划操作：${(consolidationPlan.planned || []).length} 项`,
                         ),
                         (consolidationPlan.planned || []).map((p, i) =>
-                          h('div', { key: i, className: 'gz-mono gz-muted' }, `· ${p}`),
+                          h('div', { key: i, className: 'evo-mono evo-muted' }, `· ${p}`),
                         ),
                       )
                     : h(
                         'p',
-                        { className: 'gz-field-hint' },
+                        { className: 'evo-field-hint' },
                         '将多个重叠的窄技能蒸馏合并为高内聚「类级别大伞技能」，减少目录行数并提升路由准确度（被吸收的旧技能自动归入 .archive 并记入 SHA-256 账本）。',
                       ),
                 ),
 
                 h(
                   'section',
-                  { className: 'gz-sec' },
+                  { className: 'evo-sec' },
                   h(
                     'div',
-                    { className: 'gz-sec-head' },
-                    h('span', { className: 'gz-num' }, '02'),
-                    h('h2', null, `正式技能库 (${filteredSkills.length})`),
+                    { className: 'evo-sec-head' },
+                    h('h2', { className: 'evo-sec-title' }, '正式技能库'),
+                    h('span', { className: 'evo-count' }, String(filteredSkills.length)),
                   ),
                   h(
                     'div',
-                    { className: 'gz-toolbar' },
+                    { className: 'evo-toolbar' },
                     h(
                       'div',
-                      { className: 'gz-search' },
+                      { className: 'evo-search' },
                       h(SvgIcon, { d: ICONS.search, size: 14 }),
                       h('input', {
                         type: 'text',
@@ -1469,7 +1522,7 @@ window.__ModuleLoader__.load({
                     ),
                     h(
                       'div',
-                      { className: 'gz-pills-row', style: { marginLeft: 'auto' } },
+                      { className: 'evo-pills-row', style: { marginLeft: 'auto' } },
                       [
                         ['all', `全部 (${skills.length})`],
                         ['active', `活跃 (${stats.byState?.active || 0})`],
@@ -1481,7 +1534,7 @@ window.__ModuleLoader__.load({
                           {
                             key: id,
                             type: 'button',
-                            className: 'gz-pill',
+                            className: 'evo-pill',
                             'aria-pressed': skillFilter === id ? 'true' : 'false',
                             onClick: () => setSkillFilter(id),
                           },
@@ -1492,7 +1545,7 @@ window.__ModuleLoader__.load({
                   ),
                   h(
                     'div',
-                    { className: 'gz-list' },
+                    { className: 'evo-list' },
                     filteredSkills.map((s) =>
                       h(SwissSkillRow, {
                         key: s.name,
@@ -1518,40 +1571,51 @@ window.__ModuleLoader__.load({
                 unmanaged.length
                   ? h(
                       'section',
-                      { className: 'gz-sec' },
+                      { className: 'evo-sec' },
                       h(
                         'div',
-                        { className: 'gz-sec-head' },
-                        h('span', { className: 'gz-num' }, '03'),
-                        h('h2', null, `外部 / 手写未纳管技能 (${unmanaged.length})`),
+                        { className: 'evo-sec-head' },
+                        h('h2', { className: 'evo-sec-title' }, '外部 / 手写未纳管技能'),
+                        h('span', { className: 'evo-count' }, String(unmanaged.length)),
                       ),
                       h(
                         'div',
-                        { className: 'gz-list' },
+                        { className: 'evo-list' },
                         unmanaged.map((name) =>
                           h(
                             'div',
-                            { key: name, className: 'gz-row-card' },
+                            { key: name, className: 'evo-row-card' },
                             h(
                               'div',
-                              { className: 'gz-row-line' },
-                              h('span', { className: 'gz-dot', style: { background: '#737373' } }),
-                              h('span', { className: 'gz-mono gz-ink' }, name),
-                              h('span', { className: 'gz-row-desc' }, '用户手写或外部导入（默认受保护不自动修改）'),
+                              { className: 'evo-row-line' },
                               h(
-                                'button',
-                                {
-                                  type: 'button',
-                                  className: 'gz-btn ghost',
-                                  style: { marginLeft: 'auto', height: '26px', padding: '0 10px' },
-                                  onClick: () =>
-                                    act(
-                                      `adopt:${name}`,
-                                      () => api('/adopt', { method: 'POST', body: JSON.stringify({ name }) }),
-                                      `已纳管「${name}」`,
-                                    ),
-                                },
-                                '纳入统计',
+                                'div',
+                                { className: 'evo-row-main' },
+                                h(
+                                  'div',
+                                  { className: 'evo-row-title-line' },
+                                  h('span', { className: 'evo-row-name' }, name),
+                                  h('span', { className: 'evo-badge' }, '未纳管'),
+                                ),
+                                h('span', { className: 'evo-row-desc' }, '用户手写或外部导入（默认受保护，不自动修改）'),
+                              ),
+                              h(
+                                'div',
+                                { className: 'evo-row-end' },
+                                h(
+                                  'button',
+                                  {
+                                    type: 'button',
+                                    className: 'evo-btn',
+                                    onClick: () =>
+                                      act(
+                                        `adopt:${name}`,
+                                        () => api('/adopt', { method: 'POST', body: JSON.stringify({ name }) }),
+                                        `已纳管「${name}」`,
+                                      ),
+                                  },
+                                  '纳入统计',
+                                ),
                               ),
                             ),
                           ),
@@ -1566,17 +1630,17 @@ window.__ModuleLoader__.load({
           view === 'ledger'
             ? h(
                 'section',
-                { className: 'gz-sec' },
+                { className: 'evo-sec' },
                 h(
                   'div',
-                  { className: 'gz-sec-head' },
-                  h('span', { className: 'gz-num' }, '01'),
-                  h('h2', null, `SHA-256 内容寻址账本 (${ledger.length})`),
-                  h('span', { className: 'gz-mono gz-muted', style: { marginLeft: 'auto' } }, '.evolution_ledger.jsonl'),
+                  { className: 'evo-sec-head' },
+                  h('h2', { className: 'evo-sec-title' }, 'SHA-256 内容寻址账本'),
+                  h('span', { className: 'evo-count' }, String(ledger.length)),
+                  h('span', { className: 'evo-kicker', style: { marginLeft: 'auto' } }, '.evolution_ledger.jsonl'),
                 ),
                 h(
                   'div',
-                  { className: 'gz-list' },
+                  { className: 'evo-list' },
                   ledger.map((e) =>
                     h(SwissLedgerRow, {
                       key: e.id,
@@ -1598,12 +1662,11 @@ window.__ModuleLoader__.load({
           view === 'settings'
             ? h(
                 'section',
-                { className: 'gz-sec' },
+                { className: 'evo-sec' },
                 h(
                   'div',
-                  { className: 'gz-sec-head' },
-                  h('span', { className: 'gz-num' }, '01'),
-                  h('h2', null, '自进化引擎与节流参数'),
+                  { className: 'evo-sec-head' },
+                  h('h2', { className: 'evo-sec-title' }, '引擎与节流参数'),
                 ),
                 h(SwissSettingsPanel, {
                   config,
@@ -1622,348 +1685,389 @@ window.__ModuleLoader__.load({
         toast
           ? h(
               'div',
-              { className: 'gz-toast' + (toast.tone === 'err' ? ' err' : '') },
-              h('span', { className: 'gz-mono' }, toast.tone === 'err' ? 'ERROR' : 'OK'),
+              { className: 'evo-toast' + (toast.tone === 'err' ? ' err' : '') },
+              h('span', { className: 'evo-kicker' }, toast.tone === 'err' ? '错误' : '完成'),
               h('span', null, toast.message),
             )
           : null,
       );
     }
 
-    // ---------- 9. 歸藏瑞士国际主义样式表 (源自 dsh-guizang-design/gallery/gz-swiss.css & style.css) ----------
+    // ---------- 9. 原生样式表（对齐 DSH 设置页：720px 容器 / 20·14·12 字号阶梯 / .5px 行线 / token 取色）----------
     const CSS = `
-.gz-shell, .gz-shell *, .gz-shell *::before, .gz-shell *::after {
+.evo-page {
+  --evo-radius-sm: var(--dsw-radius-sm, 6px);
+  --evo-radius-md: var(--dsw-radius-md, 8px);
   box-sizing: border-box;
-  border-radius: 0;
-}
-.gz-shell {
-  --font-sans: 'Inter', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --paper: #fafaf8;
-  --paper-2: #f0f0ee;
-  --grey-1: #f0f0ee;
-  --grey-2: #d4d4d2;
-  --ink: #0a0a0a;
-  --text-primary: #0a0a0a;
-  --text-secondary: #525252;
-  --text-helper: #737373;
-  --line: #d4d4d2;
-  --line-subtle: #e0e0e0;
-  --accent: #002FA7;
-  --accent-on: #ffffff;
-  --danger: #b91c1c;
-  --ok: #047857;
-  display: grid;
-  grid-template-columns: 208px minmax(0, 1fr);
-  height: 100%;
   width: 100%;
-  overflow: hidden;
-  background: var(--grey-1);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-size: 13.5px;
-  line-height: 1.55;
+  height: 100%;
+  overflow-y: auto;
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 0 clamp(24px, 4vw, 48px);
   -webkit-font-smoothing: antialiased;
 }
-body[data-ds-dark-theme] .gz-shell {
-  --paper: #1b1b1a;
-  --paper-2: #232322;
-  --grey-1: #111110;
-  --grey-2: #4a4a48;
-  --ink: #f2f2f0;
-  --text-primary: #f2f2f0;
-  --text-secondary: #b4b4b1;
-  --text-helper: #8c8c89;
-  --line: #3a3a38;
-  --line-subtle: #2b2b2a;
-  --accent: #5B7BFF;
-  --accent-on: #ffffff;
-  --danger: #f87171;
-  --ok: #34d399;
-}
-
-.gz-mono { font-family: var(--font-mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; }
-.gz-muted { color: var(--text-helper); }
-.gz-ink { color: var(--ink); font-weight: 600; }
-.gz-accent { color: var(--accent); font-weight: 600; }
-.gz-ok-label { color: var(--ok); font-weight: 600; }
-
-/* 左侧瑞士导航栏 */
-.gz-rail {
-  height: 100%;
+.evo-page *, .evo-page *::before, .evo-page *::after { box-sizing: border-box; }
+.evo-page-inner {
   display: flex;
   flex-direction: column;
-  padding: 24px 12px;
-  background: var(--paper);
-  border-right: 1px solid var(--line-subtle);
-  overflow-y: auto;
+  gap: 20px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 0 64px;
 }
-.gz-brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
-.gz-brand-mark {
-  width: 20px; height: 20px; flex: none;
-  background:
-    linear-gradient(#002FA7, #002FA7) 0 0 / 9px 9px no-repeat,
-    linear-gradient(#FF6B35, #FF6B35) 11px 0 / 9px 9px no-repeat,
-    linear-gradient(#C5E803, #C5E803) 0 11px / 9px 9px no-repeat,
-    linear-gradient(#FFD500, #FFD500) 11px 11px / 9px 9px no-repeat;
-}
-.gz-brand-name { display: block; font-weight: 600; font-size: 14.5px; letter-spacing: -.01em; line-height: 1.25; }
-.gz-brand-sub { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--text-helper); margin-top: 2px; }
+.evo-page-settings { height: auto; overflow: visible; padding: 0; }
+.evo-page-settings .evo-page-inner { gap: 16px; padding: 4px 0 24px; }
 
-.gz-nav { display: flex; flex-direction: column; gap: 2px; margin-top: 32px; }
-.gz-nav-group { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; color: var(--text-helper); padding: 0 8px 6px; }
-.gz-nav-item {
-  display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px;
-  background: transparent; border: 0; color: var(--text-secondary); font-weight: 500;
-  font-size: 13px; cursor: pointer; text-align: left; width: 100%;
-}
-.gz-nav-item:hover { background: var(--grey-1); color: var(--ink); }
-.gz-nav-item.on { background: var(--ink); color: var(--paper); font-weight: 600; }
-.gz-nav-count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; opacity: .75; }
+/* 页头 */
+.evo-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.evo-page-title { margin: 0; font-size: 20px; font-weight: 500; line-height: 28px; color: var(--dsw-alias-label-primary); }
+.evo-page-lead { margin: 4px 0 0; max-width: 60ch; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
+.evo-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.evo-meta { margin: -8px 0 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
 
-.gz-rail-foot {
-  margin-top: auto; padding: 14px 8px 0; border-top: 1px solid var(--line-subtle);
-  font-family: var(--font-mono); font-size: 10px; line-height: 1.85; color: var(--text-helper);
+/* 分段标签页（原生 SegmentedTabs 观感） */
+.evo-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px;
+  overflow-x: auto;
+  border: .5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--evo-radius-md);
+  background: var(--dsw-alias-bg-layer-2);
 }
-.gz-foot-head { color: var(--text-secondary); margin-bottom: 2px; font-weight: 600; }
-.gz-foot-row { display: flex; justify-content: space-between; gap: 8px; }
+.evo-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: .5px solid transparent;
+  border-radius: var(--evo-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.evo-tab:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.evo-tab[aria-selected="true"] {
+  border-color: var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+.evo-tab:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color); outline-offset: 2px; }
+.evo-tab-count { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
 
-/* 右侧主区 */
-.gz-main {
-  height: 100%; overflow-y: auto; padding: 32px 40px 72px; min-width: 0; max-width: 1160px;
+/* 概览统计 */
+.evo-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: .5px solid var(--dsw-alias-border-l2);
+  border-bottom: .5px solid var(--dsw-alias-border-l2);
 }
-.gz-head { margin-bottom: 28px; }
-.gz-head-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gz-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.gz-eyebrow {
-  display: inline-block; position: relative; padding: 3px 9px;
-  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; color: var(--text-secondary);
-}
-.gz-eyebrow::before, .gz-eyebrow::after {
-  content: ''; position: absolute; top: 0; bottom: 0; width: 5px; border: 1px solid var(--ink);
-}
-.gz-eyebrow::before { left: 0; border-right: 0; }
-.gz-eyebrow::after { right: 0; border-left: 0; }
-.gz-head h1 { margin: 12px 0 0; font-size: 2.1rem; font-weight: 300; letter-spacing: -.03em; line-height: 1.15; }
-.gz-head p { margin: 10px 0 0; color: var(--text-secondary); max-width: 52em; line-height: 1.65; font-size: 13px; }
+.evo-stat { min-width: 0; padding: 12px 16px; border-left: .5px solid var(--dsw-alias-border-l2); cursor: pointer; }
+.evo-stat:first-child { padding-left: 0; border-left: 0; }
+.evo-stat:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.evo-stat-label { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-stat-val { margin-top: 2px; font-size: 20px; font-weight: 500; line-height: 28px; font-variant-numeric: tabular-nums; }
+.evo-stat-sub { margin-top: 2px; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 四格共用细线统计栏 */
-.gz-stats {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--line-subtle); background: var(--paper); margin-bottom: 36px;
+/* 分节 */
+.evo-sec { display: flex; flex-direction: column; }
+.evo-sec-head { display: flex; align-items: center; gap: 12px; padding-bottom: 2px; }
+.evo-sec-title { margin: 0; font-size: 14px; font-weight: 500; line-height: 20px; color: var(--dsw-alias-label-primary); }
+.evo-count { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
+.evo-sec-head .evo-link-btn { margin-left: auto; }
+.evo-sec-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.evo-more {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-left: auto; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: var(--dsw-alias-label-secondary);
+  font: inherit; font-size: 12px; line-height: 18px; cursor: pointer;
 }
-.gz-stat { padding: 16px 18px; border-left: 1px solid var(--line-subtle); cursor: pointer; transition: background .15s; }
-.gz-stat:first-child { border-left: 0; }
-.gz-stat:hover { background: var(--paper-2); }
-.gz-stat .gz-mono { color: var(--text-helper); }
-.gz-stat-val { margin-top: 10px; font-size: 26px; font-weight: 300; letter-spacing: -.02em; line-height: 1.1; }
-.gz-stat-sub { margin-top: 6px; font-size: 11.5px; color: var(--text-helper); }
+.evo-more:hover { color: var(--dsw-alias-label-primary); }
 
-/* 区块标题 */
-.gz-sec { margin-top: 36px; }
-.gz-sec-head {
-  display: flex; align-items: baseline; gap: 14px; padding-bottom: 10px;
-  margin-bottom: 16px; border-bottom: 1px solid var(--ink);
+/* 列表行 */
+.evo-list { display: flex; flex-direction: column; border-top: .5px solid var(--dsw-alias-border-l2); }
+.evo-row-card { border-bottom: .5px solid var(--dsw-alias-border-l2); }
+.evo-list > .evo-row-card:last-child { border-bottom: 0; }
+.evo-row-line { display: flex; align-items: center; gap: 12px; padding: 16px 0; flex-wrap: wrap; min-width: 0; }
+.evo-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.evo-row-title-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.evo-row-name {
+  padding: 0; border: 0; border-radius: 4px; background: none; cursor: pointer;
+  color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; font-weight: 500; line-height: 20px;
+  overflow: hidden; text-overflow: ellipsis;
 }
-.gz-sec-head .gz-num { font-family: var(--font-mono); font-size: 12px; color: var(--text-helper); }
-.gz-sec-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
-.gz-more {
-  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12.5px; color: var(--text-secondary); background: none; border: 0; cursor: pointer;
-}
-.gz-more:hover { color: var(--ink); }
+.evo-row-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.evo-row-desc { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 56ch; }
+.evo-row-end { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+.evo-row-meta { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.evo-drawer { padding: 12px 0 16px; border-top: .5px solid var(--dsw-alias-border-l2); }
+.evo-drawer .evo-code-box { margin-top: 0; }
 
-/* 待审草稿瑞士卡片 */
-.gz-draft-list { display: flex; flex-direction: column; gap: 18px; }
-.gz-draft {
-  background: var(--paper); border: 1px solid var(--line-subtle);
-  transition: border-color .15s;
+/* 徽章与文本 */
+.evo-badge {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+  border: .5px solid var(--dsw-alias-label-secondary); border-radius: 999px;
+  color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; white-space: nowrap;
 }
-.gz-draft:hover { border-color: var(--line); }
-.gz-draft-kicker {
-  display: flex; align-items: center; gap: 8px; padding: 12px 20px;
-  border-bottom: 1px solid var(--line-subtle); color: var(--text-helper);
-}
-.gz-dot { display: inline-block; width: 8px; height: 8px; flex: none; }
-.gz-sep { opacity: .45; }
-.gz-draft-main { padding: 16px 20px; }
-.gz-draft-title { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
-.gz-draft-summary { margin: 6px 0 0; color: var(--text-secondary); font-size: 13.5px; line-height: 1.65; }
-.gz-trigger-line {
-  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-subtle);
-  display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; color: var(--text-secondary);
-}
+.evo-badge-info { border-color: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-state-business-primary); }
+.evo-badge-ok { border-color: var(--dsw-alias-state-success-primary); color: var(--dsw-alias-state-success-primary); }
+.evo-kicker { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 18px; }
+.evo-muted { color: var(--dsw-alias-label-secondary); }
+.evo-ink { color: var(--dsw-alias-label-primary); font-weight: 500; }
+.evo-accent { color: var(--dsw-alias-state-business-primary); }
+.evo-sep { color: var(--dsw-alias-label-tertiary); }
+.evo-pitfall-item { overflow-wrap: anywhere; }
+.evo-ok-label { color: var(--dsw-alias-label-primary); font-weight: 500; }
 
-/* 步骤共用 1px 细线格子 */
-.gz-steps-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  border-top: 1px solid var(--line-subtle); background: var(--paper);
-}
-.gz-step-cell {
-  padding: 14px 16px; border-right: 1px solid var(--line-subtle); border-bottom: 1px solid var(--line-subtle);
-  cursor: pointer; transition: background .15s; display: flex; flex-direction: column; gap: 6px;
-}
-.gz-step-cell:hover { background: var(--paper-2); }
-.gz-step-cell.on { background: var(--paper-2); box-shadow: inset 0 2px 0 var(--accent); }
-.gz-step-top { display: flex; justify-content: space-between; align-items: center; }
-.gz-step-add { color: var(--accent); opacity: 0; transition: opacity .15s; }
-.gz-step-cell:hover .gz-step-add, .gz-step-cell.on .gz-step-add { opacity: 1; }
-.gz-step-body { font-size: 12.5px; line-height: 1.55; color: var(--ink); }
-
-.gz-pitfalls {
-  display: flex; align-items: baseline; gap: 12px; padding: 10px 20px;
-  border-bottom: 1px solid var(--line-subtle); background: var(--paper-2); font-size: 12px;
-}
-.gz-pitfalls-list { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--text-secondary); }
-
-/* 同意 vs 驳回 二栏后果对照 */
-.gz-outcomes {
-  display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line-subtle);
-}
-.gz-outcome-cell { padding: 12px 20px; border-left: 1px solid var(--line-subtle); }
-.gz-outcome-cell:first-child { border-left: 0; }
-.gz-outcome-cell p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
-
-.gz-ai-note {
-  padding: 10px 20px; background: var(--paper-2); border-bottom: 1px solid var(--line-subtle);
-  display: flex; align-items: baseline; gap: 10px; font-size: 12.5px;
-}
-
-/* 底部单行操作与批示栏 */
-.gz-draft-foot { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; background: var(--paper); }
-.gz-pills-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.gz-pill {
-  height: 28px; padding: 0 11px; background: var(--paper); border: 1px solid var(--line);
-  color: var(--text-secondary); font-size: 12px; font-weight: 500; cursor: pointer;
-  transition: border-color .15s, background .15s, color .15s;
-}
-.gz-pill:hover { border-color: var(--ink); color: var(--ink); }
-.gz-pill[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-
-.gz-action-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.gz-input {
-  height: 32px; padding: 0 12px; background: var(--paper); border: 1px solid var(--line);
-  color: var(--ink); font: inherit; font-size: 13px;
-}
-.gz-input:focus { outline: none; border-color: var(--ink); }
-.gz-directive-input { flex: 1; min-width: 240px; }
-
-/* 瑞士风直角按钮 */
-.gz-btn {
+/* 按钮 */
+.evo-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 32px; padding: 0 14px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
-  background: var(--ink); color: var(--paper); border: 1px solid var(--ink); cursor: pointer;
-  transition: background .15s, color .15s, border-color .15s;
+  height: 32px; padding: 0 12px;
+  border: .5px solid var(--dsw-alias-border-l2); border-radius: var(--evo-radius-sm);
+  background: transparent; color: var(--dsw-alias-label-primary);
+  font: inherit; font-size: 13px; line-height: 20px; white-space: nowrap; cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
 }
-.gz-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
-.gz-btn:disabled { opacity: .4; cursor: not-allowed; }
-.gz-btn.ghost { background: var(--paper); color: var(--ink); border: 1px solid var(--line); }
-.gz-btn.ghost:hover:not(:disabled) { border-color: var(--ink); background: var(--paper-2); color: var(--ink); }
-.gz-btn.ghost.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
-
-.gz-ibtn {
-  width: 28px; height: 28px; display: grid; place-items: center;
-  border: 1px solid var(--line); color: var(--text-secondary); background: var(--paper); cursor: pointer;
+.evo-btn:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
+.evo-btn:active:not(:disabled) { background: var(--dsw-alias-interactive-bg-active); }
+.evo-btn:disabled { opacity: .45; cursor: not-allowed; }
+.evo-btn:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color); outline-offset: 2px; }
+.evo-btn.primary { border-color: transparent; background: var(--dsw-alias-label-primary); color: var(--dsw-alias-bg-base); }
+.evo-btn.primary:hover:not(:disabled) { background: var(--dsw-alias-label-primary); opacity: .88; }
+.evo-btn.ghost { background: transparent; color: var(--dsw-alias-label-primary); }
+.evo-btn.danger { color: var(--dsw-alias-state-error-primary); }
+.evo-btn.danger:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover-danger, var(--dsw-alias-interactive-bg-hover)); }
+.evo-ibtn {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: var(--evo-radius-sm); background: transparent;
+  color: var(--dsw-alias-label-secondary); cursor: pointer;
 }
-.gz-ibtn:hover, .gz-ibtn.on { border-color: var(--ink); background: var(--ink); color: var(--paper); }
-.gz-link-btn {
-  display: inline-flex; align-items: center; gap: 4px; background: none; border: 0;
-  color: var(--text-secondary); font-size: 12px; cursor: pointer; padding: 2px 4px;
+.evo-ibtn:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.evo-ibtn.on { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-interactive-bg-active); }
+.evo-ibtn:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color); outline-offset: 2px; }
+.evo-link-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 0; border: 0; border-radius: 4px; background: none;
+  color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; line-height: 18px; cursor: pointer;
 }
-.gz-link-btn:hover { color: var(--ink); text-decoration: underline; }
+.evo-link-btn:hover { color: var(--dsw-alias-label-primary); }
+.evo-link-btn:disabled { opacity: .45; cursor: not-allowed; }
+.evo-link-btn:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color); outline-offset: 2px; }
 
-/* 列表行与抽屉 */
-.gz-list { display: flex; flex-direction: column; border-top: 1px solid var(--line-subtle); }
-.gz-row-card { background: var(--paper); border: 1px solid var(--line-subtle); border-top: 0; }
-.gz-row-line { display: flex; align-items: center; gap: 10px; padding: 11px 16px; flex-wrap: wrap; }
-.gz-row-name { background: none; border: 0; cursor: pointer; color: var(--ink); font-weight: 600; padding: 0; }
-.gz-row-name:hover { color: var(--accent); }
-.gz-row-desc { color: var(--text-secondary); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 44ch; }
-.gz-drawer { border-top: 1px solid var(--line-subtle); padding: 12px 16px; background: var(--paper-2); }
+/* 草稿卡 */
+.evo-draft-list { display: flex; flex-direction: column; border-top: .5px solid var(--dsw-alias-border-l2); }
+.evo-draft { padding: 16px 0; border-bottom: .5px solid var(--dsw-alias-border-l2); }
+.evo-draft-list > .evo-draft:last-child { border-bottom: 0; }
+.evo-draft-compact { padding: 12px 0; }
+.evo-compact-row { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: nowrap; }
+.evo-compact-name { flex: none; max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; line-height: 20px; }
+.evo-compact-sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-compact-actions { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+.evo-draft-kicker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; color: var(--dsw-alias-label-secondary); }
+.evo-draft-kicker .evo-link-btn { margin-left: auto; }
+.evo-draft-main { padding: 0; }
+.evo-draft-title { margin: 0; font-size: 16px; font-weight: 500; line-height: 24px; color: var(--dsw-alias-label-primary); }
+.evo-draft-summary { margin: 4px 0 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
+.evo-trigger-line { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-trigger-line .evo-kicker { flex: none; }
 
-/* 工具栏与搜索 */
-.gz-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
-.gz-search { position: relative; flex: 0 1 280px; }
-.gz-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-helper); }
-.gz-search input { width: 100%; height: 32px; padding: 0 12px 0 32px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); font: inherit; }
-.gz-search input:focus { outline: none; border-color: var(--ink); }
+/* 步骤、护栏、后果 */
+.evo-steps-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px;
+  margin-top: 8px; border-top: .5px solid var(--dsw-alias-border-l2);
+}
+.evo-step-cell {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 0; border: 0; border-bottom: .5px solid var(--dsw-alias-border-l2);
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.evo-step-cell:hover, .evo-step-cell.on { background: var(--dsw-alias-interactive-bg-hover); }
+.evo-step-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.evo-step-label { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
+.evo-step-add { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); opacity: 0; transition: opacity .12s ease; }
+.evo-step-cell:hover .evo-step-add, .evo-step-cell.on .evo-step-add { opacity: 1; }
+.evo-step-body { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-primary); }
+.evo-pitfalls {
+  display: flex; align-items: baseline; gap: 12px; padding: 12px 0;
+  border-bottom: .5px solid var(--dsw-alias-border-l2); font-size: 12px; line-height: 18px;
+}
+.evo-pitfalls-list { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--dsw-alias-label-secondary); }
+.evo-outcomes {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px;
+  padding: 12px 0; border-bottom: .5px solid var(--dsw-alias-border-l2);
+}
+.evo-outcome-cell { min-width: 0; }
+.evo-outcome-cell p { margin: 4px 0 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-ai-note {
+  display: flex; align-items: baseline; gap: 12px; padding: 12px 0;
+  border-bottom: .5px solid var(--dsw-alias-border-l2); font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary);
+}
+.evo-ai-note .evo-kicker { flex: none; color: var(--dsw-alias-label-primary); }
+
+/* 批示与操作 */
+.evo-draft-foot { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 0; }
+.evo-pills-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.evo-pill {
+  height: 28px; padding: 0 10px;
+  border: .5px solid var(--dsw-alias-border-l2); border-radius: var(--evo-radius-sm);
+  background: transparent; color: var(--dsw-alias-label-secondary);
+  font: inherit; font-size: 12px; line-height: 18px; cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+}
+.evo-pill:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.evo-pill[aria-pressed="true"] {
+  border-color: var(--dsw-alias-border-l3);
+  background: var(--dsw-alias-interactive-bg-active);
+  color: var(--dsw-alias-label-primary);
+}
+.evo-pill:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color); outline-offset: 2px; }
+.evo-action-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.evo-input {
+  height: 32px; padding: 0 10px;
+  border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--evo-radius-sm);
+  background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary);
+  font: inherit; font-size: 13px; line-height: 20px;
+}
+.evo-input::placeholder { color: var(--dsw-alias-label-tertiary); }
+.evo-input:focus {
+  outline: none;
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: inset 0 0 0 .5px var(--dsw-alias-brand-primary);
+}
+.evo-directive-input { flex: 1; min-width: 240px; }
+.evo-input-num { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+.evo-input-wide { width: 240px; max-width: 100%; }
+.evo-inline-fields { display: grid; grid-template-columns: repeat(2, 96px); gap: 8px; }
+
+/* 搜索与工具栏 */
+.evo-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.evo-search { position: relative; flex: 0 1 280px; }
+.evo-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--dsw-alias-label-tertiary); }
+.evo-search input {
+  width: 100%; height: 32px; padding: 0 10px 0 32px;
+  border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--evo-radius-sm);
+  background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary);
+  font: inherit; font-size: 13px; line-height: 20px;
+}
+.evo-search input::placeholder { color: var(--dsw-alias-label-tertiary); }
+.evo-search input:focus { outline: none; border-color: var(--dsw-alias-brand-primary); box-shadow: inset 0 0 0 .5px var(--dsw-alias-brand-primary); }
 
 /* 代码与表格 */
-.gz-code-box { border-top: 1px solid var(--line-subtle); background: #111110; color: #f2f2f0; }
-.gz-code-fm { display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 16px; border-bottom: 1px solid #2b2b2a; font-family: var(--font-mono); font-size: 11px; color: #b4b4b1; }
-.gz-code-pre { margin: 0; max-height: 320px; overflow: auto; padding: 10px 0; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6; }
-.gz-code-line { display: flex; padding: 0 16px; }
-.gz-code-num { width: 32px; flex: none; color: #6b6b68; user-select: none; }
-.gz-code-txt { white-space: pre-wrap; word-break: break-word; }
+.evo-code-box { margin-top: 8px; border: .5px solid var(--dsw-alias-border-l2); border-radius: var(--evo-radius-md); background: var(--dsw-alias-bg-layer-2); overflow: hidden; }
+.evo-code-fm { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 12px; border-bottom: .5px solid var(--dsw-alias-border-l2); font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-code-fm-item strong { color: var(--dsw-alias-label-primary); font-weight: 500; }
+.evo-code-pre { margin: 0; max-height: 320px; overflow: auto; padding: 8px 0; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-primary); }
+.evo-code-line { display: flex; padding: 0 12px; }
+.evo-code-num { width: 24px; margin-right: 12px; flex: none; color: var(--dsw-alias-label-tertiary); text-align: right; user-select: none; }
+.evo-code-txt { white-space: pre-wrap; word-break: break-word; }
+.evo-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 18px; }
+.evo-table th, .evo-table td { padding: 8px; border-bottom: .5px solid var(--dsw-alias-border-l2); text-align: left; vertical-align: top; }
+.evo-table th { color: var(--dsw-alias-label-tertiary); font-weight: 400; white-space: nowrap; }
 
-.gz-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.gz-table th, .gz-table td { padding: 7px 10px; border-bottom: 1px solid var(--line-subtle); text-align: left; }
-.gz-table th { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-helper); }
+/* 设置分组（原生设置行） */
+.evo-settings-box { margin: 0; }
+.evo-settings-grid { display: flex; flex-direction: column; border-top: .5px solid var(--dsw-alias-border-l2); }
+.evo-field { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: .5px solid var(--dsw-alias-border-l2); }
+.evo-field:last-child { border-bottom: 0; }
+.evo-field-main { min-width: 0; }
+.evo-field-label { font-size: 14px; line-height: 20px; color: var(--dsw-alias-label-primary); }
+.evo-field-hint { margin-top: 4px; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-field-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: none; flex-wrap: wrap; }
+.evo-settings-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 16px; border-top: .5px solid var(--dsw-alias-border-l2); }
+.evo-settings-foot .evo-kicker { overflow-wrap: anywhere; }
 
-/* 设置与空状态 */
-.gz-settings-box { background: var(--paper); border: 1px solid var(--line-subtle); padding: 20px; }
-.gz-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
-.gz-field { display: flex; flex-direction: column; gap: 6px; }
-.gz-field-head { display: flex; justify-content: space-between; align-items: baseline; }
-.gz-field-label { font-weight: 600; font-size: 13px; }
-.gz-field-hint { font-size: 11.5px; color: var(--text-helper); line-height: 1.5; }
-.gz-settings-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line-subtle); display: flex; justify-content: space-between; align-items: center; }
+/* 开关（对齐宿主 36×20） */
+.evo-switch {
+  position: relative; flex: none; width: 36px; height: 20px; padding: 2px;
+  border: 0; border-radius: 999px;
+  background: var(--dsw-alias-border-l3, var(--dsw-alias-border-l2));
+  cursor: pointer; -webkit-appearance: none; appearance: none;
+  transition: background-color .12s ease;
+}
+.evo-switch[aria-checked="true"] { background: var(--dsw-alias-brand-primary); }
+.evo-switch:disabled { opacity: .45; cursor: not-allowed; }
+.evo-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color); outline-offset: 2px; }
+.evo-thumb {
+  display: block; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--dsw-alias-label-primary-foreground);
+  transition: transform .12s ease;
+}
+.evo-switch[aria-checked="true"] .evo-thumb { transform: translateX(16px); }
 
-.gz-plan-box { background: var(--paper); border: 1px solid var(--line-subtle); padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
-.gz-empty { background: var(--paper); border: 1px solid var(--line-subtle); padding: 36px 24px; text-align: center; color: var(--text-secondary); }
-.gz-loading { padding: 64px; text-align: center; color: var(--text-helper); }
+/* 整理方案与空状态 */
+.evo-tidy-box { display: flex; flex-direction: column; gap: 12px; padding: 12px 0; border-top: .5px solid var(--dsw-alias-border-l2); }
+.evo-tidy-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.evo-tidy-stats { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-tidy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+.evo-tidy-cell { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: .5px solid var(--dsw-alias-border-l2); min-width: 0; }
+.evo-tidy-cell-wide { grid-column: 1 / -1; }
+.evo-tidy-item { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
+.evo-tidy-group { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: .5px solid var(--dsw-alias-border-l2); }
+.evo-tidy-group:first-of-type { border-top: 0; }
+.evo-tidy-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.evo-tidy-group-name { font-size: 13px; font-weight: 500; line-height: 20px; }
+.evo-tidy-members { display: flex; flex-wrap: wrap; gap: 6px; }
+.evo-plan-box { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-top: .5px solid var(--dsw-alias-border-l2); font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
+.evo-plan-box .evo-mono { overflow-wrap: anywhere; }
+.evo-empty { padding: 16px 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
+.evo-empty p { margin: 4px 0 0; }
+.evo-empty .evo-mono { display: inline-block; margin-bottom: 4px; color: var(--dsw-alias-label-tertiary); }
+.evo-loading { padding: 64px 24px; text-align: center; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); }
 
-.gz-toast {
+/* 浮层提示（不遮挡、无自造弹窗） */
+.evo-toast {
   position: fixed; right: 24px; bottom: 24px; z-index: 9999;
-  display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px;
-  background: var(--ink); color: var(--paper); font-size: 12.5px;
+  display: inline-flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 48px));
+  padding: 10px 12px;
+  border: .5px solid var(--dsw-alias-border-l2); border-radius: var(--evo-radius-md);
+  background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary);
+  font-size: 13px; line-height: 20px;
+  box-shadow: var(--dsw-elevation-prominent);
 }
-.gz-toast.err { background: var(--danger); color: #ffffff; }
-
-/* 一键整理方案卡 */
-.gz-tidy-box { background: var(--paper); border: 1px solid var(--ink); margin-bottom: 18px; }
-.gz-tidy-head { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--line-subtle); flex-wrap: wrap; }
-.gz-tidy-stats { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
-.gz-tidy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.gz-tidy-cell { padding: 12px 16px; border-right: 1px solid var(--line-subtle); border-top: 1px solid var(--line-subtle); display: flex; flex-direction: column; gap: 5px; }
-.gz-tidy-cell-wide { grid-column: 1 / -1; border-right: 0; }
-.gz-tidy-item { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-.gz-tidy-group { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px dashed var(--line-subtle); }
-.gz-tidy-group:first-of-type { border-top: 0; }
-.gz-tidy-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.gz-tidy-group-name { font-size: 12.5px; font-weight: 600; }
-.gz-tidy-members { display: flex; flex-wrap: wrap; gap: 5px; }
-
-/* 折叠态草稿行：一屏放下全部待审清单 */
-.gz-draft-compact { border-left: 2px solid transparent; }
-.gz-draft-compact:hover { border-left-color: var(--ink); }
-.gz-compact-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; flex-wrap: nowrap; min-width: 0; }
-.gz-compact-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 26ch; flex: none; }
-.gz-compact-sum { font-size: 12px; color: var(--text-helper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-.gz-compact-actions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
-@media (max-width: 780px) {
-  .gz-compact-row { flex-wrap: wrap; }
-  .gz-compact-name, .gz-compact-sum { max-width: none; flex: 1 1 100%; white-space: normal; }
-  .gz-compact-actions { margin-left: 0; }
-  .gz-tidy-grid { grid-template-columns: 1fr; }
-  .gz-tidy-cell { border-right: 0; }
-}
+.evo-toast .evo-kicker { color: var(--dsw-alias-label-secondary); }
+.evo-toast.err { border-color: var(--dsw-alias-state-error-primary); }
+.evo-toast.err .evo-kicker { color: var(--dsw-alias-state-error-primary); }
 
 @media (max-width: 780px) {
-  .gz-shell { grid-template-columns: 1fr; }
-  .gz-rail { height: auto; border-right: 0; border-bottom: 1px solid var(--line-subtle); padding: 14px 16px; }
-  .gz-nav { flex-direction: row; overflow-x: auto; margin-top: 12px; }
-  .gz-nav-group, .gz-rail-foot { display: none; }
-  .gz-nav-item { width: auto; white-space: nowrap; }
-  .gz-main { padding: 20px 16px 60px; }
-  .gz-stats, .gz-outcomes, .gz-settings-grid { grid-template-columns: 1fr; }
-  .gz-stat, .gz-outcome-cell { border-left: 0; border-top: 1px solid var(--line-subtle); }
-  .gz-input, .gz-directive-input { font-size: 16px; }
+  .evo-page { padding: 0 16px; }
+  .evo-page-inner { padding: 20px 0 48px; }
+  .evo-page-settings { padding: 0; }
+  .evo-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .evo-stat { padding-left: 0; border-left: 0; }
+  .evo-stat:nth-child(n + 3) { border-top: .5px solid var(--dsw-alias-border-l2); }
+  .evo-step-cell { padding-left: 0; padding-right: 0; }
+  .evo-steps-grid, .evo-outcomes, .evo-tidy-grid { grid-template-columns: 1fr; }
+  .evo-field { flex-direction: column; align-items: stretch; gap: 8px; }
+  .evo-field-control { justify-content: flex-start; }
+  .evo-compact-row { flex-wrap: wrap; }
+  .evo-compact-name, .evo-compact-sum { max-width: none; flex: 1 1 100%; white-space: normal; }
+  .evo-compact-actions { margin-left: 0; }
+  .evo-page-head { flex-direction: column; align-items: stretch; }
+  .evo-head-actions { justify-content: flex-start; }
 }
 `;
 
-    function renderWithStyles(props) {
-      return h(React.Fragment, null, h('style', null, CSS), h(EvolutionPanel, props));
+    function renderPage(props) {
+      return h(React.Fragment, null, h('style', null, CSS), h(EvolutionPanel, { ...props, variant: 'page' }));
+    }
+
+    function renderSettingsSection(props) {
+      return h(React.Fragment, null, h('style', null, CSS), h(EvolutionPanel, { ...props, variant: 'settings' }));
     }
 
     function SidebarPanelIcon(props) {
@@ -1976,9 +2080,9 @@ body[data-ds-dark-theme] .gz-shell {
           viewBox: '0 0 24 24',
           fill: 'none',
           stroke: 'currentColor',
-          strokeWidth: 1.6,
-          strokeLinecap: 'square',
-          strokeLinejoin: 'miter',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
           'aria-hidden': true,
         },
         h('path', { d: 'M12 3a9 9 0 1 0 9 9' }),
@@ -1987,11 +2091,15 @@ body[data-ds-dark-theme] .gz-shell {
       );
     }
 
+    function SettingsSectionIcon(props) {
+      return h(SidebarPanelIcon, { size: typeof props?.size === 'number' ? props.size : 16 });
+    }
+
     return {
       inject: ['slots'],
       apply(ctx) {
         ctx.slots.inject('main', () =>
-          ctx.slots.register({ name: 'main', key: 'dsh-evolution' }, renderWithStyles),
+          ctx.slots.register({ name: 'main', key: 'dsh-evolution' }, renderPage),
         );
         ctx.slots.inject('sidebar.panellist', () =>
           ctx.slots.register(
@@ -2012,8 +2120,11 @@ body[data-ds-dark-theme] .gz-shell {
               order: 30,
               label: () => '自进化',
             },
-            renderWithStyles,
+            renderSettingsSection,
           ),
+        );
+        ctx.slots.inject('settings.section.icon', () =>
+          ctx.slots.register({ name: 'settings.section.icon', id: 'dsh-evolution' }, SettingsSectionIcon),
         );
       },
     };

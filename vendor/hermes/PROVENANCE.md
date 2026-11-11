@@ -10,6 +10,7 @@ against a paraphrase.
 | | |
 |---|---|
 | Upstream | Nous Research `hermes-agent` |
+| Vendored on | 2026-11-07 |
 | License | MIT (see upstream `LICENSE`) |
 
 ## Files

@@ -24,7 +24,7 @@ jobs:
             node --check "$f"
           done
 
-      - name: Run unit test suite (61 tests)
+      - name: Run unit test suite (70 tests)
         run: node --test test/*.test.js
 
       - name: Run capability parity audit (41/41)
@@ -32,3 +32,6 @@ jobs:
 
       - name: Run prompt fidelity audit
         run: node tools/verify-prompt-fidelity.mjs
+
+      - name: Run sanitization gate
+        run: node scripts/sanitize-check.mjs
